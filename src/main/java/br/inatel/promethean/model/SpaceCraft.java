@@ -1,19 +1,33 @@
 package br.inatel.promethean.model;
 
 public class SpaceCraft {
+    /**
+     * Id: Id do processo
+     * arrivalTime: momento em que o processo fica pronto
+     * burstTime: tempo total de CPU que o processo precisa
+     * remainingTime: quanto de CPU ainda falta (diminui a cada tick)
+     * basePriority: prioridade original
+     * currentPriority: prioridade efetiva, é alterada pelo aging
+     * state: estado no ciclo de vida
+     * waitingTime: tempo acumulado do processo em ready
+     * startTime: primeira vez que ganhou uma cpu
+     * finishTime: momento em que o processo terminou
+     * timeInCurrentStates: há quanto tempo está no estado atual
+     */
 
     private final String id;
-    private final float arrivalTime, burstTime, remainingTime;
+    private final float arrivalTime, burstTime;
+    private float remainingTime;
     private final int basePriority; // Quanto menor, maior prioridade
     private int currentPriority;
-    private float waitingTime = 0, startTime = -1, finishTime = -1, timeInCurrentState = 0;
+    private int waitingTime = 0, startTime = -1, finishTime = -1, timeInCurrentState = 0;
     private ProcessState state;
 
-    public SpaceCraft(String id, float arrivalTime, float burstTime, float remainingTime, int basePriority) {
+    public SpaceCraft(String id, float arrivalTime, float burstTime, int basePriority) {
         this.id = id;
         this.arrivalTime = arrivalTime;
         this.burstTime = burstTime;
-        this.remainingTime = remainingTime;
+        this.remainingTime = burstTime;
         this.basePriority = basePriority;
         this.currentPriority = basePriority;
         this.state = ProcessState.NEW;
