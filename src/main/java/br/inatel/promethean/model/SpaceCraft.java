@@ -1,5 +1,9 @@
 package br.inatel.promethean.model;
 
+import br.inatel.promethean.exceptions.InvalidValueException;
+
+import javax.management.InvalidAttributeValueException;
+
 public class SpaceCraft {
     /**
      * Id: Id do processo
@@ -33,6 +37,51 @@ public class SpaceCraft {
         this.state = ProcessState.NEW;
     }
 
+
+    /**
+     * Executa um tick quando o processo está em running (decrementa o tempo restante)
+     */
+    public void executeTick() throws InvalidValueException {
+        if(state != ProcessState.RUNNING){throw new InvalidValueException("SpaceCraft is not running.");}
+        else if(remainingTime > 0){remainingTime--;}
+        else{throw new InvalidValueException("remaining time cannot be less than zero.");}
+    }
+
+    /**
+     * Checa se o processo finalizou sua execução ou não
+     * @return True = processo terminado False = não terminou
+     */
+    public boolean isFinished() {
+        return remainingTime == 0;
+    }
+
+    /**
+     * Incrementa o tempo em espera e o tempo no estado atual
+     */
+    public void waitTick(){
+        waitingTime++;
+        timeInCurrentState++;
+    }
+
+    /**
+     * Decrementa a prioridade atual (ou seja, torna o processo MAIS prioritário)
+     *
+     * @param boost ticks que serão decrementados da prioridade
+     */
+    public void ageBoost(int boost) {
+        currentPriority = Math.max(0, currentPriority - boost);
+    }
+
+    /**
+     * evitar que a nave fique prioritária para sempre
+     */
+    public void resetPriority(){
+        currentPriority = basePriority;
+    }
+
+
+
+    // Getters & Setters
     public String getId() { return id; }
 
     public float getArrivalTime() { return arrivalTime; }
