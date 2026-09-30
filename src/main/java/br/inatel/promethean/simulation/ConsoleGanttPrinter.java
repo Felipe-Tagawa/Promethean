@@ -7,12 +7,12 @@ public class ConsoleGanttPrinter implements SimulationListener {
 
     }
 
-    public void print() {
-        System.out.println("Algorithm: " + SimulationMetrics.algorithm);
-        System.out.println("Average Waiting Time: " + SimulationMetrics.avgWaitingTime);
-        System.out.println("Average Response Time: " + SimulationMetrics.avgResponseTime);
-        System.out.println("Context Switches: " + SimulationMetrics.contextSwitches);
-        System.out.println("Throughput: " + SimulationMetrics.throughput);
-        System.out.println("Average Turnaround Time: " + SimulationMetrics.avgTurnaroundTime);
+    public void print(SimulationMetrics metrics){
+        System.out.println("Algorithm: " + metrics.algorithm());
+        System.out.println("Average Waiting Time: " + metrics.avgWaitingTime());
+        System.out.println("Average Response Time: " + metrics.avgResponseTime());
+        System.out.println("Context Switches: " + metrics.contextSwitches());
+        System.out.println("Throughput: " + metrics.throughput());
+        System.out.println("Average Turnaround Time: " + metrics.avgTurnaroundTime());
     }
 }

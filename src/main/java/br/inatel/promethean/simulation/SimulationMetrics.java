@@ -1,11 +1,8 @@
 package br.inatel.promethean.simulation;
 
-public record SimulationMetrics() {
-
-    static String algorithm;
-    static double avgWaitingTime;
-    static double avgTurnaroundTime;
-    static double avgResponseTime;
-    static double throughput;
-    static double contextSwitches;
-}
+public record SimulationMetrics(String algorithm,
+                                double avgWaitingTime,
+                                double avgTurnaroundTime,
+                                double avgResponseTime,
+                                double throughput,
+                                double contextSwitches) {}
