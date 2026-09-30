@@ -43,11 +43,11 @@ public class DockingPort {
         }
     }
 
-    public SpaceCraft getCurrentSpaceCraft() {
+    public SpaceCraft getCurrent() {
         return currentSpaceCraft;
     }
 
-    public int getQuantumTime() {
+    public int getQuantumUsed() {
         return quantumUsed;
     }
 }

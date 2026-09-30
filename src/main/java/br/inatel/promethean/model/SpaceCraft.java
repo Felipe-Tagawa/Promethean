@@ -63,7 +63,7 @@ public class SpaceCraft {
     }
 
     public void markStart(int now){
-        startTime = now;
+        if (startTime == -1) startTime = now;
     }
 
     public void markFinish(int now){
@@ -92,11 +92,11 @@ public class SpaceCraft {
     // Getters & Setters
     public String getId() { return id; }
 
-    public float getArrivalTime() { return arrivalTime; }
+    public int getArrivalTime() { return arrivalTime; }
 
-    public float getBurstTime() { return burstTime; }
+    public int getBurstTime() { return burstTime; }
 
-    public float getRemainingTime() { return remainingTime; }
+    public int getRemainingTime() { return remainingTime; }
 
     public int getBasePriority() { return basePriority; }
 
@@ -106,17 +106,17 @@ public class SpaceCraft {
 
     public void setState(ProcessState state) { this.state = state; this.timeInCurrentState = 0; }
 
-    public float getWaitingTime() { return waitingTime; }
+    public int getWaitingTime() { return waitingTime; }
 
-    public float getStartTime() { return startTime; }
+    public int getStartTime() { return startTime; }
 
-    public float getFinishTime() { return finishTime; }
+    public int getFinishTime() { return finishTime; }
 
-    public float getTimeInCurrentState() { return timeInCurrentState; }
+    public int getTimeInCurrentState() { return timeInCurrentState; }
 
     @Override
     public String toString() {
-        return String.format("[%s | Pri:%d (Base:%d) | Rem:%f/%f | State:%s]",
+        return String.format("[%s | Pri:%d (Base:%d) | Rem:%d/%d | State:%s]",
                 id, currentPriority, basePriority, remainingTime, burstTime, state);
     }
 }
