@@ -20,14 +20,14 @@ public class SpaceCraft {
      */
 
     private final String id;
-    private final float arrivalTime, burstTime;
-    private float remainingTime;
+    private final int arrivalTime, burstTime;
+    private int remainingTime;
     private final int basePriority; // Quanto menor, maior prioridade
     private int currentPriority;
     private int waitingTime = 0, startTime = -1, finishTime = -1, timeInCurrentState = 0;
     private ProcessState state;
 
-    public SpaceCraft(String id, float arrivalTime, float burstTime, int basePriority) {
+    public SpaceCraft(String id, int arrivalTime, int burstTime, int basePriority) {
         this.id = id;
         this.arrivalTime = arrivalTime;
         this.burstTime = burstTime;
@@ -36,7 +36,6 @@ public class SpaceCraft {
         this.currentPriority = basePriority;
         this.state = ProcessState.NEW;
     }
-
 
     /**
      * Executa um tick quando o processo está em running (decrementa o tempo restante)
@@ -63,12 +62,15 @@ public class SpaceCraft {
         timeInCurrentState++;
     }
 
-    /**
-     * Decrementa a prioridade atual (ou seja, torna o processo MAIS prioritário)
-     *
-     * @param boost ticks que serão decrementados da prioridade
-     */
-    public void ageBoost(int boost) {
+    public void markStart(int now){
+        startTime = now;
+    }
+
+    public void markFinish(int now){
+        finishTime = now;
+    }
+
+    public void age(int boost) {
         currentPriority = Math.max(0, currentPriority - boost);
     }
 
@@ -79,7 +81,13 @@ public class SpaceCraft {
         currentPriority = basePriority;
     }
 
+    public int getTurnaroundTime(){
+        return finishTime - arrivalTime;
+    }
 
+    public int getResponseTime(){
+        return startTime - arrivalTime;
+    }
 
     // Getters & Setters
     public String getId() { return id; }
