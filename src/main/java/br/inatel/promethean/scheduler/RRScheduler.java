@@ -26,11 +26,6 @@ public class RRScheduler implements Scheduler {
     }
 
     @Override
-    public void onArrival(SpaceCraft s, int now) {
-
-    }
-
-    @Override
     public SpaceCraft selectNext(int now) {
         return null;
     }

@@ -12,14 +12,6 @@ public interface Scheduler {
     boolean hasReady();
 
     /**
-     * Representa quando o processo "nave" entra em estado de ready
-     *
-     * @param s nave que entrou no estado
-     * @param now tempo em que isso ocorreu (inteiro)
-     */
-    void onArrival(SpaceCraft s, int now);
-
-    /**
      * Forma com que o próximo processo será implementado
      *
      * @param now tempo em que isso ocorre
