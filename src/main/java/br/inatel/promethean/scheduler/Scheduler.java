@@ -5,6 +5,12 @@ import br.inatel.promethean.model.SpaceCraft;
 
 public interface Scheduler {
 
+    String name();
+
+    void addToReady(SpaceCraft s, int now);
+
+    boolean hasReady();
+
     /**
      * Representa quando o processo "nave" entra em estado de ready
      *

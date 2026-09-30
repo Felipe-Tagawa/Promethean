@@ -5,9 +5,10 @@ import br.inatel.promethean.model.SpaceCraft;
 
 import java.util.Deque;
 
-public class FcfsScheduler implements Scheduler {
+public class RRScheduler implements Scheduler {
 
     private Deque<SpaceCraft> queue;
+    private int quantum;
 
     @Override
     public String name() {

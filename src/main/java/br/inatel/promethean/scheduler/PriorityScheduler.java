@@ -3,11 +3,13 @@ package br.inatel.promethean.scheduler;
 import br.inatel.promethean.model.DockingPort;
 import br.inatel.promethean.model.SpaceCraft;
 
-import java.util.Deque;
+import java.util.List;
 
-public class FcfsScheduler implements Scheduler {
+public class PriorityScheduler implements Scheduler {
 
-    private Deque<SpaceCraft> queue;
+    private List<SpaceCraft> readyQueue;
+    private int agingInterval;
+    private int agingBoost;
 
     @Override
     public String name() {
