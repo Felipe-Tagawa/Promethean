@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Promethean — Sincronismo e deadlock</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/sync.css">
+</head>
+<body>
+
+<header class="topbar">
+    <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+            <circle cx="20" cy="20" r="7"/>
+            <ellipse cx="20" cy="20" rx="17" ry="7" transform="rotate(-24 20 20)"/>
+            <circle class="brand-dot" cx="35" cy="13" r="2.4"/>
+        </svg>
+        <div>
+            <h1>Promethean</h1>
+            <p>Sincronismo e deadlock nos braços robóticos</p>
+        </div>
+    </div>
+    <nav class="tabs" aria-label="Cenas">
+        <a href="index.html">Escalonamento</a>
+        <a href="sincronismo.html" aria-current="page">Sincronismo</a>
+    </nav>
+    <div class="source" id="source" hidden>
+        <span class="source-dot" aria-hidden="true"></span>
+        <span id="source-text"></span>
+    </div>
+</header>
+
+<main class="layout layout-sync">
+
+    <section class="panel controls" aria-label="Controles do cenário">
+        <div class="segmented" role="radiogroup" aria-labelledby="scenario-label">
+            <span id="scenario-label">Cenário</span>
+            <label><input type="radio" name="scenario" value="race" checked><span>Disputa pelo braço</span></label>
+            <label><input type="radio" name="scenario" value="deadlock"><span>Deadlock</span></label>
+        </div>
+
+        <label class="switch">
+            <span class="switch-title">Sincronismo</span>
+            <input type="checkbox" id="sync-toggle" role="switch" checked>
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            <span class="switch-state" id="sync-label">Ligado</span>
+        </label>
+
+        <label class="field" id="recovery-field" hidden>
+            <span>Tratamento</span>
+            <select id="recovery">
+                <option value="none">Nenhum: deixa travar</option>
+                <option value="detection">Detecção e recuperação</option>
+                <option value="timeout">Timeout com tryLock</option>
+            </select>
+        </label>
+
+        <label class="field">
+            <span>Ritmo</span>
+            <select id="pace">
+                <option value="1300">Lento</option>
+                <option value="800" selected>Normal</option>
+                <option value="400">Rápido</option>
+            </select>
+        </label>
+
+        <button type="button" id="btn-run" class="play-btn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path id="run-icon" d="M7 4l13 8-13 8z"/></svg>
+            <span id="run-label">Iniciar</span>
+        </button>
+
+        <div class="run-status" id="run-status" data-phase="idle" aria-live="polite">Pronto para iniciar</div>
+    </section>
+
+    <section class="panel scene-panel" aria-label="Estação e braços robóticos">
+        <div class="scene-wrap">
+            <svg id="sync-scene" class="scene-svg" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="sync-title">
+                <title id="sync-title">Naves disputando os braços robóticos da estação</title>
+            </svg>
+            <div class="sync-badge" id="sync-badge" data-sync="true"></div>
+            <div class="deadlock-banner" id="deadlock-banner" role="alert" hidden></div>
+        </div>
+        <p class="caption" id="caption" aria-live="polite"></p>
+    </section>
+
+    <aside class="panel side-panel">
+        <h2>Naves <span class="hint">threads</span></h2>
+        <table class="data-table" id="threads-table">
+            <thead>
+            <tr>
+                <th scope="col">Nave</th>
+                <th scope="col">Estado</th>
+                <th scope="col" title="Braços que a nave está usando">Segura</th>
+                <th scope="col" title="Braço que a nave pediu e ainda não recebeu">Espera</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <h2>Grafo de espera <span class="hint">um ciclo é um deadlock</span></h2>
+        <svg id="wait-graph" class="wait-graph" viewBox="0 0 360 200" role="img" aria-label="Grafo de alocação de recursos"></svg>
+        <p class="legend">
+            <span><span class="key key-hold" aria-hidden="true"></span>braço em uso pela nave</span>
+            <span><span class="key key-wait" aria-hidden="true"></span>nave esperando o braço</span>
+        </p>
+    </aside>
+
+    <section class="panel log-panel">
+        <h2>Eventos <span class="hint">o mais recente primeiro</span></h2>
+        <ol class="event-log" id="event-log"></ol>
+    </section>
+
+    <section class="panel result-panel">
+        <h2>Resultado</h2>
+        <dl class="tiles">
+            <div><dt>Colisões</dt><dd id="result-collisions">0</dd></div>
+            <div><dt>Carga registrada</dt><dd id="result-cargo">—</dd></div>
+            <div><dt>Situação</dt><dd id="result-status">—</dd></div>
+        </dl>
+        <h2>O que este cenário mostra</h2>
+        <p class="lesson" id="lesson"></p>
+    </section>
+
+</main>
+
+<div class="fatal" id="fatal" hidden role="alert"></div>
+
+<script type="module" src="js/sync/main.js"></script>
+</body>
+</html>
