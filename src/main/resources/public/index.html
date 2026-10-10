@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Promethean — Controle de tráfego orbital</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+    <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+            <circle cx="20" cy="20" r="7"/>
+            <ellipse cx="20" cy="20" rx="17" ry="7" transform="rotate(-24 20 20)"/>
+            <circle class="brand-dot" cx="35" cy="13" r="2.4"/>
+        </svg>
+        <div>
+            <h1>Promethean</h1>
+            <p>Escalonamento de CPU em uma estação orbital</p>
+        </div>
+    </div>
+    <div class="source" id="source" hidden>
+        <span class="source-dot" aria-hidden="true"></span>
+        <span id="source-text"></span>
+    </div>
+</header>
+
+<main class="layout">
+
+    <section class="panel controls" aria-label="Controles da simulação">
+        <label class="field">
+            <span>Algoritmo</span>
+            <select id="algorithm"></select>
+        </label>
+
+        <div class="transport" role="group" aria-label="Reprodução">
+            <button type="button" id="btn-restart" class="icon-btn" aria-label="Voltar ao início" title="Voltar ao início (Home)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 5l-9 7 9 7z"/></svg>
+            </button>
+            <button type="button" id="btn-prev" class="icon-btn" aria-label="Tick anterior" title="Tick anterior (seta esquerda)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-8 7 8 7z"/></svg>
+            </button>
+            <button type="button" id="btn-play" class="play-btn" title="Reproduzir ou pausar (espaço)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path id="play-icon" d="M7 4l13 8-13 8z"/></svg>
+                <span id="play-label">Reproduzir</span>
+            </button>
+            <button type="button" id="btn-next" class="icon-btn" aria-label="Próximo tick" title="Próximo tick (seta direita)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l8 7-8 7z"/></svg>
+            </button>
+        </div>
+
+        <label class="field">
+            <span>Velocidade</span>
+            <select id="speed">
+                <option value="0.5">0,5×</option>
+                <option value="1" selected>1×</option>
+                <option value="2">2×</option>
+                <option value="4">4×</option>
+            </select>
+        </label>
+
+        <div class="clock" aria-live="off">
+            <span class="clock-label">Tick</span>
+            <span class="clock-value"><strong id="tick">0</strong><span class="clock-total"> / <span id="tick-total">0</span></span></span>
+        </div>
+    </section>
+
+    <section class="panel scene-panel" aria-label="Estação orbital">
+        <div class="scene-wrap">
+            <svg id="scene" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="scene-title">
+                <title id="scene-title">Estação orbital com a órbita de espera e as portas de acoplamento</title>
+            </svg>
+            <div class="hud">
+                <div class="hud-item">
+                    <span class="hud-label">Algoritmo</span>
+                    <span class="hud-value" id="hud-algorithm">—</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Trocas de contexto</span>
+                    <span class="hud-value" id="hud-switches">0</span>
+                </div>
+            </div>
+        </div>
+        <p class="caption" id="caption" aria-live="polite"></p>
+    </section>
+
+    <aside class="panel ships-panel">
+        <h2>Naves <span class="hint">processos</span></h2>
+        <table class="data-table" id="ships-table">
+            <thead>
+            <tr>
+                <th scope="col">Nave</th>
+                <th scope="col">Estado</th>
+                <th scope="col" class="num" title="Tick de chegada">Cheg.</th>
+                <th scope="col" class="num" title="Tempo total de porta necessário">Burst</th>
+                <th scope="col" class="num" title="Quanto falta executar">Resta</th>
+                <th scope="col" class="num" title="Ticks já passados na órbita de espera">Espera</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <p class="legend">
+            <span><b class="state state-NEW">NEW</b> a caminho</span>
+            <span><b class="state state-READY">READY</b> em órbita</span>
+            <span><b class="state state-RUNNING">RUNNING</b> atracada</span>
+            <span><b class="state state-FINISHED">FINISHED</b> concluída</span>
+        </p>
+
+        <h2>Eventos</h2>
+        <ol class="event-log" id="event-log"></ol>
+    </aside>
+
+    <section class="panel gantt-panel">
+        <h2>Linha do tempo <span class="hint">clique ou arraste para mudar o tick</span></h2>
+        <div class="gantt" id="gantt"></div>
+    </section>
+
+    <section class="panel metrics-panel">
+        <h2>Métricas <span class="hint">mesma carga em cada algoritmo</span></h2>
+        <table class="data-table" id="metrics-table">
+            <thead>
+            <tr>
+                <th scope="col">Algoritmo</th>
+                <th scope="col" class="num" title="Média de ticks na órbita de espera">Espera</th>
+                <th scope="col" class="num" title="Média de término menos chegada">Turnaround</th>
+                <th scope="col" class="num" title="Média de primeira atracação menos chegada">Resposta</th>
+                <th scope="col" class="num" title="Trocas de contexto">Trocas</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <p class="legend" id="metrics-note"></p>
+    </section>
+
+</main>
+
+<div class="fatal" id="fatal" hidden role="alert"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
