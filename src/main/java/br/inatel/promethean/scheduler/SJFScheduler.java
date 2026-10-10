@@ -9,19 +9,9 @@ import java.util.Deque;
 public class SJFScheduler implements Scheduler {
 
     private Deque<SpaceCraft> queue;
-    private int boost;
-    private int agingInterval;
 
     public SJFScheduler() {
         queue = new ArrayDeque<SpaceCraft>();
-        boost = 1;
-        agingInterval = 1;
-    }
-
-    public SJFScheduler(int boost, int agingInterval) {
-        this.boost = boost;
-        this.agingInterval = agingInterval;
-        this.queue = new ArrayDeque<SpaceCraft>();
     }
 
     @Override
@@ -84,18 +74,11 @@ public class SJFScheduler implements Scheduler {
 
     @Override
     public boolean shouldPreempt(SpaceCraft running, DockingPort port, int now) {
-        for (SpaceCraft s : queue) {
-            if (s.getCurrentPriority() < running.getCurrentPriority()) {
-                return true; // Preempção
-            }
-        }
-        return false;    }
+        return false;
+    }
 
     @Override
     public void onTick(int now) {
-        for (SpaceCraft c : queue) {
-            if(c.getCurrentPriority() > 0 && selectNext(now).getTimeInCurrentState() % agingInterval == 0)
-                c.age(boost);
-        }
+
     }
 }
