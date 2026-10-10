@@ -29,28 +29,53 @@ public class SJFScheduler implements Scheduler {
         return "Shortest Job First";
     }
 
+    /**
+     * Coloca a nave no fim da fila de prontos (órbita de espera).
+     * É chamado em toda entrada em READY: chegada, preempção ou desbloqueio
+     *
+     * @param s nave que ficou pronta
+     * @param now tick em que isso ocorreu (não usado pelo SJF)
+     */
     @Override
     public void addToReady(SpaceCraft s, int now) {
-        this.queue.addFirst(s);
+        this.queue.addLast(s);
     }
 
+    /**
+     * Checa se existe alguma nave na fila de prontos
+     *
+     * @return True = há nave esperando False = fila vazia
+     */
     @Override
     public boolean hasReady() {
-        return queue.isEmpty();
+        return !queue.isEmpty();
     }
 
+    /**
+     * Escolhe a nave de menor burstTime e a remove da fila de prontos.
+     * Empate de burst: ganha a de menor currentPriority; se ainda empatar,
+     * ganha quem entrou antes na fila
+     *
+     * @param now tick em que a escolha ocorre (não usado pelo SJF)
+     * @return nave escolhida, ou null se a fila estiver vazia
+     */
     @Override
-    public SpaceCraft selectNext(int now) throws NullPointerException {
+    public SpaceCraft selectNext(int now) {
         if (!queue.isEmpty()) {
             int minBt = Integer.MAX_VALUE;
             SpaceCraft min = null;
+
             for (SpaceCraft c : queue) {
-                int curBt = c.getBurstTime();
-                if (curBt < minBt) {
-                    minBt = curBt;
+                if (min == null || c.getBurstTime() < min.getBurstTime()) {
+                    min = c;
+                }
+                else if (c.getBurstTime() == min.getBurstTime()
+                        && c.getArrivalTime() < min.getArrivalTime()) {
                     min = c;
                 }
             }
+
+            queue.remove(min);
 
             return min;
         }
