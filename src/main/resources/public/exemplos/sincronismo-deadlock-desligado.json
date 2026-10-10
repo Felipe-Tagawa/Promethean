@@ -1,0 +1,20 @@
+[
+  {"seq": 0, "timeMs": 0, "type": "SYNC_START", "scenario": "DEADLOCK", "sync": false, "recovery": "NONE", "spacecrafts": ["N1", "N2"], "resources": [{"id": "ROBOTIC_ARM_A", "capacity": 1}, {"id": "ROBOTIC_ARM_B", "capacity": 1}]},
+  {"seq": 1, "timeMs": 300, "type": "REQUEST", "spaceCraftId": "N1", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 2, "timeMs": 301, "type": "ACQUIRE", "spaceCraftId": "N1", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 3, "timeMs": 600, "type": "REQUEST", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 4, "timeMs": 601, "type": "ACQUIRE", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 5, "timeMs": 1200, "type": "REQUEST", "spaceCraftId": "N1", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 6, "timeMs": 1201, "type": "ACQUIRE", "spaceCraftId": "N1", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 7, "timeMs": 1202, "type": "COLLISION", "resourceId": "ROBOTIC_ARM_B", "spaceCraftIds": ["N2", "N1"]},
+  {"seq": 8, "timeMs": 1500, "type": "REQUEST", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 9, "timeMs": 1501, "type": "ACQUIRE", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 10, "timeMs": 1502, "type": "COLLISION", "resourceId": "ROBOTIC_ARM_A", "spaceCraftIds": ["N1", "N2"]},
+  {"seq": 11, "timeMs": 2400, "type": "RELEASE", "spaceCraftId": "N1", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 12, "timeMs": 2401, "type": "RELEASE", "spaceCraftId": "N1", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 13, "timeMs": 2402, "type": "DONE", "spaceCraftId": "N1"},
+  {"seq": 14, "timeMs": 2700, "type": "RELEASE", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 15, "timeMs": 2701, "type": "RELEASE", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 16, "timeMs": 2702, "type": "DONE", "spaceCraftId": "N2"},
+  {"seq": 17, "timeMs": 2800, "type": "SYNC_END", "reason": "COMPLETED", "collisions": 2}
+]

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "algorithm": "Shortest Remaining Time First",
+  "algorithm": "Priority with Aging",
   "ports": ["P1"],
   "spacecrafts": [
     {"id": "N1", "arrivalTime": 0, "burstTime": 8, "basePriority": 3},
@@ -25,7 +25,7 @@
     {"tick": 26, "type": "FINISH", "spaceCraftId": "N3", "portId": "P1"}
   ],
   "metrics": {
-    "algorithm": "Shortest Remaining Time First",
+    "algorithm": "Priority with Aging",
     "avgWaitingTime": 6.5,
     "avgTurnaroundTime": 13.0,
     "avgResponseTime": 4.25,
