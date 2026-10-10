@@ -2,7 +2,7 @@
 
 Este documento define **o que o servidor envia e o que o front espera receber**. Ele existe para que o motor, o servidor, o pacote `sync/` e a tela possam ser feitos ao mesmo tempo, por pessoas diferentes, e se encaixem no fim.
 
-> Enquanto o backend não estiver pronto, o front é desenvolvido contra os arquivos de [`exemplos/`](exemplos/). Eles seguem exatamente o formato descrito aqui.
+> Enquanto o backend não estiver pronto, o front é desenvolvido contra os arquivos de [`public/exemplos/`](../../src/main/resources/public/exemplos/). Eles seguem exatamente o formato descrito aqui.
 
 **Sumário**
 
@@ -84,6 +84,8 @@ Em qualquer erro de parâmetro, o servidor responde `400` com `{"error": "mensag
 
 `name` é o que `Scheduler.name()` devolve. `key` é o valor usado no parâmetro `algorithm`.
 
+Os três algoritmos previstos são FCFS, SJF e Prioridade. A lista pode começar só com o SJF e crescer: o seletor da tela mostra o que vier, sem mudança no front.
+
 ### 3.2 Gravação
 
 `GET /api/scheduling?algorithm=sjf` roda o motor com a carga de referência (`Workload.reference()`) e devolve a gravação:
@@ -133,7 +135,7 @@ O front não recebe o estado da estação a cada tick. Ele o reconstrói aplican
 
 ### 3.5 Exemplo
 
-Trecho de [`exemplos/escalonamento-srtf.json`](exemplos/escalonamento-srtf.json), que tem uma preempção no tick 1:
+Trecho de [`escalonamento-srtf.json`](../../src/main/resources/public/exemplos/escalonamento-srtf.json), que tem uma preempção no tick 1:
 
 ```json
 {"tick": 0, "type": "ARRIVAL",  "spaceCraftId": "N1", "portId": null},
@@ -147,7 +149,9 @@ Trecho de [`exemplos/escalonamento-srtf.json`](exemplos/escalonamento-srtf.json)
 
 ## 4. Cena de sincronismo (ao vivo)
 
-Nesta cena cada nave é uma **thread real** que disputa recursos da estação (braço robótico, link de telemetria). O servidor emite um evento a cada passo, e o front desenha conforme os eventos chegam.
+Nesta cena cada nave é uma **thread real** que disputa recursos da estação. O servidor emite um evento a cada passo, e o front desenha conforme os eventos chegam.
+
+Nesta entrega os recursos são só os **braços robóticos**: o braço A (`ROBOTIC_ARM_A`) e o braço B (`ROBOTIC_ARM_B`), cada um com capacidade 1. O link de telemetria é um adicional, se sobrar tempo. Como cada cenário declara os seus recursos em `SYNC_START`, incluir o link depois não muda o front.
 
 ### 4.1 Iniciar e parar
 
@@ -161,8 +165,8 @@ Nesta cena cada nave é uma **thread real** que disputa recursos da estação (b
 
 | `scenario` | `sync` | `recovery` | O que deve acontecer |
 |---|---|---|---|
-| `race` | `false` | — | Várias naves usam o braço ao mesmo tempo: `COLLISION` |
-| `race` | `true` | — | Uma nave por vez no braço; as outras esperam |
+| `race` | `false` | — | Várias naves usam o braço A ao mesmo tempo: `COLLISION` |
+| `race` | `true` | — | Uma nave por vez no braço A; as outras esperam |
 | `deadlock` | `true` | `none` | As naves travam; `DEADLOCK_DETECTED` e fim com `DEADLOCKED` |
 | `deadlock` | `true` | `detection` | Uma nave vítima é abortada, solta o recurso e todas terminam |
 | `deadlock` | `true` | `timeout` | Uma nave desiste de esperar (`TIMEOUT`), solta o que tem e tenta de novo |
@@ -219,8 +223,8 @@ Campo ausente e campo `null` são equivalentes para o front.
 ```mermaid
 sequenceDiagram
     participant N1 as Nave N1
-    participant B as Braço robótico
-    participant L as Link de telemetria
+    participant B as Braço A
+    participant L as Braço B
     participant N2 as Nave N2
 
     N1->>B: REQUEST + ACQUIRE
@@ -239,7 +243,7 @@ sequenceDiagram
     end
 ```
 
-O deadlock precisa de dois recursos de capacidade 1. Por isso o cenário declara o link de telemetria com `capacity` 1 em `SYNC_START`, e não 2 como no README. Como os recursos são declarados por cenário, o front se adapta.
+O deadlock precisa de dois recursos de capacidade 1, pedidos em ordem oposta: a N1 pega o braço A e depois quer o B; a N2 pega o B e depois quer o A. Por isso o cenário usa os dois braços, e a corrida (`race`) usa só o braço A.
 
 ---
 
@@ -247,14 +251,15 @@ O deadlock precisa de dois recursos de capacidade 1. Por isso o cenário declara
 
 | Arquivo | Conteúdo | Resultado esperado |
 |---|---|---|
-| [`escalonamento-sjf.json`](exemplos/escalonamento-sjf.json) | SJF não preemptivo na carga de referência | N1 0–8, N2 8–12, N4 12–17, N3 17–26; espera média 7,75 |
-| [`escalonamento-srtf.json`](exemplos/escalonamento-srtf.json) | SJF preemptivo, com um `PREEMPT` | N1 0–1, N2 1–5, N4 5–10, N1 10–17, N3 17–26; espera média 6,5 |
-| [`sincronismo-corrida-desligado.json`](exemplos/sincronismo-corrida-desligado.json) | `race` com `sync=false` | 2 colisões; carga 187 de 300 |
-| [`sincronismo-corrida-ligado.json`](exemplos/sincronismo-corrida-ligado.json) | `race` com `sync=true` | 0 colisões; carga 300 de 300 |
-| [`sincronismo-deadlock-travado.json`](exemplos/sincronismo-deadlock-travado.json) | `deadlock` com `recovery=none` | Termina em `DEADLOCKED` |
-| [`sincronismo-deadlock-recuperado.json`](exemplos/sincronismo-deadlock-recuperado.json) | `deadlock` com `recovery=detection` | N2 é a vítima; termina em `COMPLETED` |
+| [`escalonamento-fcfs.json`](../../src/main/resources/public/exemplos/escalonamento-fcfs.json) | FCFS na carga de referência | N1 0–8, N2 8–12, N3 12–21, N4 21–26; espera média 8,75 |
+| [`escalonamento-sjf.json`](../../src/main/resources/public/exemplos/escalonamento-sjf.json) | SJF não preemptivo na carga de referência | N1 0–8, N2 8–12, N4 12–17, N3 17–26; espera média 7,75 |
+| [`escalonamento-srtf.json`](../../src/main/resources/public/exemplos/escalonamento-srtf.json) | SJF preemptivo, com um `PREEMPT` | N1 0–1, N2 1–5, N4 5–10, N1 10–17, N3 17–26; espera média 6,5 |
+| [`sincronismo-corrida-desligado.json`](../../src/main/resources/public/exemplos/sincronismo-corrida-desligado.json) | `race` com `sync=false` | 2 colisões; carga 187 de 300 |
+| [`sincronismo-corrida-ligado.json`](../../src/main/resources/public/exemplos/sincronismo-corrida-ligado.json) | `race` com `sync=true` | 0 colisões; carga 300 de 300 |
+| [`sincronismo-deadlock-travado.json`](../../src/main/resources/public/exemplos/sincronismo-deadlock-travado.json) | `deadlock` com `recovery=none` | Termina em `DEADLOCKED` |
+| [`sincronismo-deadlock-recuperado.json`](../../src/main/resources/public/exemplos/sincronismo-deadlock-recuperado.json) | `deadlock` com `recovery=detection` | N2 é a vítima; termina em `COMPLETED` |
 
-Os arquivos de escalonamento são uma gravação (seção 3.2). Os de sincronismo são a lista das mensagens do WebSocket, na ordem (seção 4.2). Ainda não há exemplo para `recovery=timeout`.
+Os arquivos ficam em `src/main/resources/public/exemplos/`, junto do front, para o modo demonstração conseguir carregá-los. Os de escalonamento são uma gravação (seção 3.2). Os de sincronismo são a lista das mensagens do WebSocket, na ordem (seção 4.2). Ainda não há exemplo para `recovery=timeout` nem para o algoritmo de Prioridade (seção 8).
 
 Os exemplos de escalonamento foram gerados seguindo a ordem do tick do UML e conferem com as contas à mão do plano de trabalho. Os valores de `timeMs`, colisões e carga dos exemplos de sincronismo são ilustrativos: com threads reais, eles variam a cada execução.
 
@@ -302,3 +307,4 @@ Se o backend de uma cena não estiver pronto em 14/10, ela é apresentada no mod
 | Outras cargas | `GET /api/scheduling` usa sempre a carga de referência. Um parâmetro `workload` pode entrar depois sem quebrar o contrato |
 | SJF preemptivo | O exemplo `escalonamento-srtf.json` usa o nome `Shortest Remaining Time First`; o nome real virá do `name()` quando a variante existir |
 | `contextSwitches` | Hoje é `double` no record e sai como `1.0`. O front aceita os dois formatos |
+| Exemplo de Prioridade | O resultado depende de o motor chamar ou não `resetPriority()` no despacho, o que ainda não foi decidido. Na carga de referência as duas opções divergem a partir do tick 12, então não há arquivo de exemplo; o algoritmo aparece na tela quando o servidor o listar |
