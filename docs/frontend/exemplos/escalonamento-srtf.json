@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "algorithm": "Shortest Remaining Time First",
+  "ports": ["P1"],
+  "spacecrafts": [
+    {"id": "N1", "arrivalTime": 0, "burstTime": 8, "basePriority": 3},
+    {"id": "N2", "arrivalTime": 1, "burstTime": 4, "basePriority": 1},
+    {"id": "N3", "arrivalTime": 2, "burstTime": 9, "basePriority": 4},
+    {"id": "N4", "arrivalTime": 3, "burstTime": 5, "basePriority": 2}
+  ],
+  "events": [
+    {"tick": 0, "type": "ARRIVAL", "spaceCraftId": "N1", "portId": null},
+    {"tick": 0, "type": "DISPATCH", "spaceCraftId": "N1", "portId": "P1"},
+    {"tick": 1, "type": "ARRIVAL", "spaceCraftId": "N2", "portId": null},
+    {"tick": 1, "type": "PREEMPT", "spaceCraftId": "N1", "portId": "P1"},
+    {"tick": 1, "type": "DISPATCH", "spaceCraftId": "N2", "portId": "P1"},
+    {"tick": 2, "type": "ARRIVAL", "spaceCraftId": "N3", "portId": null},
+    {"tick": 3, "type": "ARRIVAL", "spaceCraftId": "N4", "portId": null},
+    {"tick": 5, "type": "FINISH", "spaceCraftId": "N2", "portId": "P1"},
+    {"tick": 5, "type": "DISPATCH", "spaceCraftId": "N4", "portId": "P1"},
+    {"tick": 10, "type": "FINISH", "spaceCraftId": "N4", "portId": "P1"},
+    {"tick": 10, "type": "DISPATCH", "spaceCraftId": "N1", "portId": "P1"},
+    {"tick": 17, "type": "FINISH", "spaceCraftId": "N1", "portId": "P1"},
+    {"tick": 17, "type": "DISPATCH", "spaceCraftId": "N3", "portId": "P1"},
+    {"tick": 26, "type": "FINISH", "spaceCraftId": "N3", "portId": "P1"}
+  ],
+  "metrics": {
+    "algorithm": "Shortest Remaining Time First",
+    "avgWaitingTime": 6.5,
+    "avgTurnaroundTime": 13.0,
+    "avgResponseTime": 4.25,
+    "throughput": 0.1538,
+    "contextSwitches": 1
+  }
+}
