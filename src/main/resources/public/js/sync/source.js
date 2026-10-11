@@ -1,18 +1,18 @@
-// Origem dos eventos de sincronismo: o WebSocket do servidor (seção 4 do contrato) ou, sem ele, os arquivos de exemplo.
+// Origem dos eventos de sincronismo: o WebSocket do servidor (seção 4 do contrato) ou, sem ele, o simulador da própria tela.
 
-const DEMO_FILES = {
-    'race|false': 'exemplos/sincronismo-corrida-desligado.json',
-    'race|true': 'exemplos/sincronismo-corrida-ligado.json',
-    'deadlock|false': 'exemplos/sincronismo-deadlock-desligado.json',
-    'deadlock|true|none': 'exemplos/sincronismo-deadlock-travado.json',
-    'deadlock|true|detection': 'exemplos/sincronismo-deadlock-recuperado.json',
-    'deadlock|true|timeout': 'exemplos/sincronismo-deadlock-timeout.json',
-};
-const DEMO_TIME_SCALE = 1.4; // os exemplos são reproduzidos um pouco mais devagar que o gravado
+import {simulate} from './simulator.js';
+
+const DEMO_TIME_SCALE = 1.4; // a simulação é reproduzida um pouco mais devagar que os tempos calculados
 const SOCKET_TIMEOUT_MS = 1500;
 
 function query(config) {
-    const params = new URLSearchParams({scenario: config.scenario, sync: String(config.sync), recovery: config.recovery});
+    const params = new URLSearchParams({
+        scenario: config.scenario,
+        sync: String(config.sync),
+        recovery: config.recovery,
+        ships: String(config.ships),
+        arms: String(config.arms),
+    });
     return params.toString();
 }
 
@@ -81,15 +81,7 @@ class DemoSource {
 
     async start(config) {
         this.cancel();
-        const key = config.scenario === 'race' || !config.sync
-            ? `${config.scenario}|${config.sync}`
-            : `${config.scenario}|${config.sync}|${config.recovery}`;
-        const file = DEMO_FILES[key];
-        if (!file) throw new Error('não há arquivo de exemplo para esta combinação');
-
-        const response = await fetch(file);
-        if (!response.ok) throw new Error(`${file} respondeu ${response.status}`);
-        const events = await response.json();
+        const events = simulate(config);
 
         this.timers = events.map(event => setTimeout(() => {
             this.lastTimeMs = event.timeMs;
@@ -112,7 +104,7 @@ class DemoSource {
 }
 
 /**
- * Tenta o WebSocket do servidor; se não abrir, usa os exemplos. O parâmetro ?demo na URL força os exemplos.
+ * Tenta o WebSocket do servidor; se não abrir, usa o simulador. O parâmetro ?demo na URL força o simulador.
  * @param onEvent chamado com cada evento, na ordem
  * @param onDisconnect chamado se a conexão com o servidor cair
  */
