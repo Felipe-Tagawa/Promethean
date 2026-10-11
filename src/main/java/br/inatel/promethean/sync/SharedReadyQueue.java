@@ -2,6 +2,7 @@ package br.inatel.promethean.sync;
 
 import br.inatel.promethean.model.SpaceCraft;
 
+import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -12,12 +13,36 @@ public class SharedReadyQueue {
     private ReentrantLock lock;
     private Condition notEmpty;
 
-    public void enqueue(SpaceCraft s) {
-
+    public SharedReadyQueue () {
+        this.queue = new ArrayDeque<>();
+        this.lock = new ReentrantLock();
+        this.notEmpty = this.lock.newCondition();
     }
 
-    public SpaceCraft dequeue() {
-        return null;
+    // Produtor
+
+    public void enqueue(SpaceCraft s) {
+        lock.lock();
+        try {
+            queue.addLast(s);
+            notEmpty.signal();
+        }finally {
+            lock.unlock();
+        }
+    }
+
+    // Consumidor
+
+    public SpaceCraft dequeue() throws InterruptedException{
+        lock.lock();
+        try{
+            while(queue.isEmpty()) {
+                notEmpty.await();
+            }
+            return queue.pollFirst();
+        }finally{
+            lock.unlock();
+        }
     }
 
 }
