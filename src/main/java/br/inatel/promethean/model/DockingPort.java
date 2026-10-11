@@ -50,4 +50,8 @@ public class DockingPort {
     public int getQuantumUsed() {
         return quantumUsed;
     }
+
+    public String getId() {
+        return id;
+    }
 }

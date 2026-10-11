@@ -18,6 +18,16 @@ public class SimulationEngine {
     private List<SimulationListener> listeners;
 
     public SimulationEngine(Scheduler scheduler, int portCount, List<SpaceCraft> spacecrafts) {
+        listeners = new ArrayList<>();
+        this.scheduler = scheduler;
+        this.ports = new ArrayList<>();
+        for (int i = 1; i <= portCount; i++) {
+            this.ports.add(new DockingPort("P" + i));
+        }
+        this.all = new ArrayList<>(spacecrafts);
+        this.clock = 0;
+        this.contextSwitchCost = 0;
+        this.contextSwitches = 0;
     }
 
     public void addListener(SimulationListener listener) {
@@ -45,7 +55,12 @@ public class SimulationEngine {
     }
 
     private void emit(EventType type, SpaceCraft s, DockingPort p){
-
+        // em arrival ainda não tem porta, por isso P é null (tratamento para nao lançar nullpointerexcept)
+        String portId = (p == null) ? null : p.getId();
+        SimulationEvent event = new SimulationEvent(clock, type, s.getId(), portId);
+        for (SimulationListener listener : listeners) {
+            listener.onEvent(event);
+        }
     }
 
 }
