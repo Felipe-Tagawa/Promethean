@@ -40,6 +40,7 @@ public class DockingPort {
     public void tick() {
         if (this.currentSpaceCraft != null) {
             this.quantumUsed++;
+            currentSpaceCraft.executeTick();
         }
     }
 

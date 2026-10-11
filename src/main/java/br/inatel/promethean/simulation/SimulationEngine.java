@@ -38,6 +38,7 @@ public class SimulationEngine {
     public SimulationMetrics run(){
         for (int i = 0; i < 3; i++) {
             admitArrivals();
+            handleRunning();
             dispatchIdlePorts();
             advanceTime();
         }
@@ -56,7 +57,24 @@ public class SimulationEngine {
     }
 
     private void handleRunning(){
-
+        for (DockingPort port : ports) {
+            if (!port.isIdle()) {
+                SpaceCraft spaceCraft = port.getCurrent();
+                if (spaceCraft.isFinished()) {
+                    spaceCraft.setState(ProcessState.FINISHED);
+                    spaceCraft.markFinish(clock);
+                    port.undock();
+                    emit(EventType.FINISH, spaceCraft, port);
+                } else if (scheduler.shouldPreempt(spaceCraft, port, clock)) {
+                    spaceCraft.setState(ProcessState.READY);
+                    spaceCraft.resetPriority();
+                    port.undock();
+                    contextSwitches++;
+                    scheduler.addToReady(spaceCraft, clock);
+                    emit(EventType.PREEMPT, spaceCraft, port);
+                }
+            }
+        }
     }
 
     private void dispatchIdlePorts(){
@@ -71,6 +89,17 @@ public class SimulationEngine {
     }
 
     private void advanceTime(){
+        for (SpaceCraft spaceCraft : all) {
+            if (spaceCraft.getState() == ProcessState.READY) {
+                spaceCraft.waitTick();
+            }
+        }
+
+        // Para portas em uso: o execute tick de uma nave atracada é chamado na porta
+        for (DockingPort dockingPort : ports) {
+            dockingPort.tick(); // ja verifica se a porta está em uso
+        }
+
         clock++;
     }
 
