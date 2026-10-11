@@ -37,7 +37,7 @@
     <section class="panel controls" aria-label="Controles do cenário">
         <div class="segmented" role="radiogroup" aria-labelledby="scenario-label">
             <span id="scenario-label">Cenário</span>
-            <label><input type="radio" name="scenario" value="race" checked><span>Disputa pelo braço</span></label>
+            <label><input type="radio" name="scenario" value="race" checked><span>Disputa pelos braços</span></label>
             <label><input type="radio" name="scenario" value="deadlock"><span>Deadlock</span></label>
         </div>
 
@@ -47,6 +47,20 @@
             <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
             <span class="switch-state" id="sync-label">Ligado</span>
         </label>
+
+        <div class="stepper" role="group" aria-label="Quantidade de naves">
+            <span class="stepper-title">Naves</span>
+            <button type="button" id="ships-less" aria-label="Remover uma nave">&minus;</button>
+            <output id="ships-count">3</output>
+            <button type="button" id="ships-more" aria-label="Adicionar uma nave">+</button>
+        </div>
+
+        <div class="stepper" role="group" aria-label="Quantidade de braços">
+            <span class="stepper-title">Braços</span>
+            <button type="button" id="arms-less" aria-label="Remover um braço">&minus;</button>
+            <output id="arms-count">1</output>
+            <button type="button" id="arms-more" aria-label="Adicionar um braço">+</button>
+        </div>
 
         <label class="field" id="recovery-field" hidden>
             <span>Tratamento</span>
@@ -75,12 +89,14 @@
     </section>
 
     <section class="panel scene-panel" aria-label="Estação e braços robóticos">
+        <div class="scene-bar">
+            <div class="sync-badge" id="sync-badge" data-sync="true"></div>
+            <div class="deadlock-banner" id="deadlock-banner" role="alert" hidden></div>
+        </div>
         <div class="scene-wrap">
             <svg id="sync-scene" class="scene-svg" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="sync-title">
                 <title id="sync-title">Naves disputando os braços robóticos da estação</title>
             </svg>
-            <div class="sync-badge" id="sync-badge" data-sync="true"></div>
-            <div class="deadlock-banner" id="deadlock-banner" role="alert" hidden></div>
         </div>
         <p class="caption" id="caption" aria-live="polite"></p>
     </section>

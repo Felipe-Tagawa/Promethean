@@ -125,6 +125,49 @@
     display: none;
 }
 
+.layout-sync .controls {
+    gap: 10px 16px;
+}
+
+.stepper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.stepper-title {
+    margin-right: 4px;
+}
+
+.stepper button {
+    width: 32px;
+    height: 36px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.stepper button:hover:not(:disabled) {
+    border-color: var(--muted);
+}
+
+.stepper button:disabled {
+    color: var(--line);
+    cursor: default;
+}
+
+.stepper output {
+    min-width: 24px;
+    color: var(--text);
+    font: 600 16px/1 ui-monospace, Consolas, monospace;
+    text-align: center;
+}
+
 .run-status {
     margin-left: auto;
     padding: 6px 14px;
@@ -141,11 +184,20 @@
 
 /* ---------- avisos sobre a cena ---------- */
 
+.scene-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    min-height: 50px;
+    padding: 8px 12px;
+    background: #050817;
+    border-bottom: 1px solid var(--line);
+}
+
 .sync-badge, .deadlock-banner {
-    position: absolute;
-    top: 12px;
     padding: 6px 14px;
-    background: rgba(15, 22, 41, .85);
     border: 1px solid var(--state-running);
     border-radius: 999px;
     color: var(--state-running);
@@ -153,11 +205,9 @@
     font-weight: 600;
 }
 
-.sync-badge { left: 12px; }
 .sync-badge[data-sync="false"] { border-color: var(--danger); color: var(--danger); }
 
 .deadlock-banner {
-    right: 12px;
     background: #2a1220;
     border-color: var(--danger);
     border-radius: 8px;
@@ -221,6 +271,7 @@
 .graph-resource rect { fill: var(--panel-2); stroke: var(--muted); stroke-width: 2; }
 .graph-resource text { fill: var(--text); font-size: 15px; font-weight: 700; }
 .graph-resource .graph-caption { fill: var(--muted); font-size: 11px; font-weight: 400; }
+.graph-resource .graph-unit { fill: var(--text); }
 
 .key {
     display: inline-block;
