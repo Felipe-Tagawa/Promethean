@@ -36,7 +36,7 @@ public class SimulationEngine {
     }
 
     public SimulationMetrics run(){
-        for (int i = 0; i < 3; i++) {
+        while (!isAllFinished(all)){
             admitArrivals();
             handleRunning();
             dispatchIdlePorts();
@@ -110,6 +110,17 @@ public class SimulationEngine {
         for (SimulationListener listener : listeners) {
             listener.onEvent(event);
         }
+    }
+
+    private boolean isAllFinished(List<SpaceCraft> spacecrafts){
+        boolean finished = true;
+        for (SpaceCraft spaceCraft : spacecrafts) {
+            if(spaceCraft.getState() != ProcessState.FINISHED){
+                finished = false;
+            }
+        }
+
+        return finished;
     }
 
 }
