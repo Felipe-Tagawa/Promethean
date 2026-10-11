@@ -44,7 +44,7 @@ flowchart TB
     subgraph SCHED["scheduler/ — as políticas"]
         SI["Scheduler<br/>interface"]:::existe
         FC["FcfsScheduler"]:::fase2
-        RR["RoundRobinScheduler"]:::fase2
+        SJF["SJFScheduler"]:::fase2
         PA["PriorityAgingScheduler"]:::fase3
     end
 
@@ -70,7 +70,7 @@ flowchart TB
     Main --> WL
     Main --> SI
     FC -.implementa.-> SI
-    RR -.implementa.-> SI
+    SJF -.implementa.-> SI
     PA -.implementa.-> SI
     EN --> SI
     EN --> DP
@@ -139,14 +139,13 @@ classDiagram
     class DockingPort {
         -String id
         -SpaceCraft current
-        -int quantumUsed
         +DockingPort(String id)
         +isIdle() boolean
         +dock(SpaceCraft s) void
         +undock() SpaceCraft
         +tick() void
         +getCurrent() SpaceCraft
-        +getQuantumUsed() int
+        +getId() String
     }
 
     class Scheduler {
@@ -163,9 +162,8 @@ classDiagram
         -Deque~SpaceCraft~ queue
     }
 
-    class RoundRobinScheduler {
+    class SJFScheduler {
         -Deque~SpaceCraft~ queue
-        -int quantum
     }
 
     class PriorityAgingScheduler {
@@ -177,10 +175,9 @@ classDiagram
     SpaceCraft --> ProcessState : state
     DockingPort --> "0..1" SpaceCraft : nave atracada
     Scheduler <|.. FcfsScheduler
-    Scheduler <|.. RoundRobinScheduler
+    Scheduler <|.. SJFScheduler
     Scheduler <|.. PriorityAgingScheduler
     Scheduler ..> SpaceCraft : ordena
-    Scheduler ..> DockingPort : lê quantumUsed
 ```
 
 **Como ler este diagrama**
@@ -191,13 +188,13 @@ classDiagram
   - `markStart` / `markFinish`: registram os tempos usados nas métricas. `markStart` só grava na **primeira** vez (`startTime == -1`).
   - `age` / `resetPriority`: aging. Número **menor** = prioridade **maior**, então `age` **diminui** `currentPriority` (mínimo 0).
     `resetPriority` devolve a nave à `basePriority` e é chamado pelo motor quando ela é **preemptada**, não quando atraca (ver a nota da seção 5).
-- `DockingPort` é um **núcleo de CPU**. `quantumUsed` conta quantos ticks a nave atual já usou; o Round Robin decide olhando esse número.
-- Os três escalonadores só diferem em **dois pontos**: o tipo de fila e a regra de `shouldPreempt`.
+- `DockingPort` é um **núcleo de CPU** onde as naves atracam para executar suas rotinas.
+- Os três escalonadores só diferem em **dois pontos**: a política de seleção na fila e a regra de `shouldPreempt`.
 
 | Algoritmo | Fila | `shouldPreempt` | `onTick` |
 |---|---|---|---|
 | FCFS | `ArrayDeque` (FIFO) | sempre `false` | nada |
-| Round Robin | `ArrayDeque` (FIFO) | `quantumUsed >= quantum && hasReady()` | nada |
+| SJF | `ArrayDeque` (menor `burstTime`) | sempre `false` | nada |
 | Prioridade + Aging | `List` (procura o menor `currentPriority`) | existe na fila alguém com prioridade menor que a da nave atual | a cada `agingInterval` ticks em READY, chama `age(agingBoost)` |
 
 > Por que `List` e não `PriorityQueue` na prioridade? O `PriorityQueue` não reordena um item cuja prioridade mudou depois de inserido. Com aging, a prioridade muda o tempo todo.
@@ -355,7 +352,7 @@ stateDiagram-v2
 
 ## 5. Um tick do clock, passo a passo
 
-A **ordem** destes passos muda os resultados, principalmente no Round Robin. Esta é a convenção dos livros: quem chega no tick `t` entra na fila **antes** de quem foi preemptado no mesmo tick.
+A **ordem** destes passos segue a convenção clássica dos livros de SO: quem chega no tick `t` entra na fila **antes** de quem foi preemptado no mesmo tick.
 
 ```mermaid
 sequenceDiagram
@@ -491,15 +488,15 @@ classDiagram
 |---|---|---|---|---|---|
 | `ProcessState` | model | Estados do processo | Tem `WAITING` e `TERMINATED` | Deixar `NEW, READY, RUNNING, BLOCKED, FINISHED` | 1 |
 | `SpaceCraft` | model | PCB | Campos certos, só getters; `remainingTime` é `final`; tempos em `float` | Tempos em `int`; `remainingTime = burstTime` no construtor; adicionar os métodos da seção 2 | 1 |
-| `DockingPort` | model | Núcleo de CPU | `dock`/`undock` prontos; parâmetro inútil no construtor | Construtor só com `id`; renomear `quantumTime` → `quantumUsed`; criar `tick()` e `getCurrent()` | 1 |
-| `Scheduler` | scheduler | Escalonador de curto prazo | Interface vazia | Declarar os 6 métodos | 2 |
+| `DockingPort` | model | Núcleo de CPU | `dock`/`undock` prontos | Construtor só com `id`; métodos `getId()`, `tick()` e `getCurrent()` | 1 |
+| `Scheduler` | scheduler | Escalonador de curto prazo | Interface vazia | Declarar os métodos | 2 |
 | `FcfsScheduler` | scheduler | FCFS | — | Criar | 2 |
-| `RoundRobinScheduler` | scheduler | RR com quantum | — | Criar | 2 |
+| `SJFScheduler` | scheduler | SJF não-preemptivo | — | Criar | 2 |
 | `SimulationEngine` | engine | Dispatcher + clock | — | Criar com 1 porta | 2 |
 | `SimulationEvent`, `EventType`, `SimulationListener`, `ConsoleGanttPrinter` | engine | Registro/linha do tempo | — | Criar | 2 |
 | `MetricsCollector` | metrics | Métricas de avaliação | — | Criar | 2 |
 | `SimulationMetrics` | model | Resultado | Classe vazia | Preencher (ou virar `record`) | 2 |
-| `Main` | raiz | — | Vazia | Rodar FCFS e RR e imprimir a tabela | 2 |
+| `Main` | raiz | — | Vazia | Rodar os algoritmos e imprimir a tabela | 2 |
 | Testes JUnit | `src/test` | — | Não existem | Casos calculados à mão (espera e turnaround) | 2 |
 | `PriorityAgingScheduler` | scheduler | Prioridade preemptiva + aging | — | Criar | 3 |
 | Várias portas + Δt | engine | Multinúcleo + troca de contexto | — | Estender o motor | 3 |

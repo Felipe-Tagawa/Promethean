@@ -5,8 +5,6 @@ public class DockingPort {
     private final String id;
     private SpaceCraft currentSpaceCraft; // Processo alocado
 
-    // Todo: Implementar contador de ticks e contador de quantum do Round Robin
-    private int quantumUsed = 0;
 
     public DockingPort(String id) {
         this.id = id;
@@ -21,7 +19,6 @@ public class DockingPort {
     public void dock(SpaceCraft spaceCraft) {
         this.currentSpaceCraft = spaceCraft;
         this.currentSpaceCraft.setState((ProcessState.RUNNING));
-        this.quantumUsed = 0;
     }
 
     // Dispatcher: port.dock(next)
@@ -31,7 +28,6 @@ public class DockingPort {
     public SpaceCraft undock() {
         SpaceCraft departing = this.currentSpaceCraft;
         this.currentSpaceCraft = null;
-        this.quantumUsed = 0;
         return departing;
     }
 
@@ -39,7 +35,7 @@ public class DockingPort {
 
     public void tick() {
         if (this.currentSpaceCraft != null) {
-            this.quantumUsed++;
+
         }
     }
 
@@ -47,7 +43,7 @@ public class DockingPort {
         return currentSpaceCraft;
     }
 
-    public int getQuantumUsed() {
-        return quantumUsed;
+    public String getId() {
+        return id;
     }
 }
