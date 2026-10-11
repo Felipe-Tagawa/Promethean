@@ -135,7 +135,7 @@ O front não recebe o estado da estação a cada tick. Ele o reconstrói aplican
 
 ### 3.5 Exemplo
 
-Trecho de [`escalonamento-srtf.json`](../../src/main/resources/public/exemplos/escalonamento-srtf.json), que tem uma preempção no tick 1:
+Trecho de [`escalonamento-priority.json`](../../src/main/resources/public/exemplos/escalonamento-priority.json), que tem uma preempção no tick 1:
 
 ```json
 {"tick": 0, "type": "ARRIVAL",  "spaceCraftId": "N1", "portId": null},
@@ -151,22 +151,24 @@ Trecho de [`escalonamento-srtf.json`](../../src/main/resources/public/exemplos/e
 
 Nesta cena cada nave é uma **thread real** que disputa recursos da estação. O servidor emite um evento a cada passo, e o front desenha conforme os eventos chegam.
 
-Nesta entrega os recursos são só os **braços robóticos**: o braço A (`ROBOTIC_ARM_A`) e o braço B (`ROBOTIC_ARM_B`), cada um com capacidade 1. O link de telemetria é um adicional, se sobrar tempo. Como cada cenário declara os seus recursos em `SYNC_START`, incluir o link depois não muda o front.
+Nesta entrega os recursos são só os **braços robóticos**. A quantidade de naves e de braços é escolhida na tela antes de iniciar (seção 4.5). O link de telemetria é um adicional, se sobrar tempo. Como cada cenário declara os seus recursos em `SYNC_START`, incluir o link depois não muda o front.
 
 ### 4.1 Iniciar e parar
 
-`POST /api/sync/start?scenario=…&sync=…&recovery=…`
+`POST /api/sync/start?scenario=…&sync=…&recovery=…&ships=…&arms=…`
 
 | Parâmetro | Valores | Significado |
 |---|---|---|
 | `scenario` | `race`, `deadlock` | Qual roteiro executar |
 | `sync` | `true`, `false` | O botão de sincronismo: com ou sem primitivas de proteção |
 | `recovery` | `none`, `detection`, `timeout` | O que fazer com o deadlock. Só vale para `scenario=deadlock` |
+| `ships` | 1 a 6 | Quantidade de naves (threads). Opcional: sem ele, 3 na disputa e 2 no deadlock |
+| `arms` | 1 a 4 na disputa; 2 a 4 no deadlock | Quantidade de braços. Opcional: sem ele, 1 na disputa e 2 no deadlock |
 
 | `scenario` | `sync` | `recovery` | O que deve acontecer |
 |---|---|---|---|
-| `race` | `false` | — | Várias naves usam o braço A ao mesmo tempo: `COLLISION` |
-| `race` | `true` | — | Uma nave por vez no braço A; as outras esperam |
+| `race` | `false` | — | Entram mais naves do que há braços: `COLLISION` |
+| `race` | `true` | — | No máximo uma nave por braço; as outras esperam |
 | `deadlock` | `true` | `none` | As naves travam; `DEADLOCK_DETECTED` e fim com `DEADLOCKED` |
 | `deadlock` | `true` | `detection` | Uma nave vítima é abortada, solta o recurso e todas terminam |
 | `deadlock` | `true` | `timeout` | Uma nave desiste de esperar (`TIMEOUT`), solta o que tem e tenta de novo |
@@ -243,7 +245,39 @@ sequenceDiagram
     end
 ```
 
-O deadlock precisa de dois recursos de capacidade 1, pedidos em ordem oposta: a N1 pega o braço A e depois quer o B; a N2 pega o B e depois quer o A. Por isso o cenário usa os dois braços, e a corrida (`race`) usa só o braço A.
+O deadlock precisa de dois recursos de capacidade 1, pedidos em ordem oposta: a N1 pega o braço A e depois quer o B; a N2 pega o B e depois quer o A. Com mais naves e braços, o mesmo roteiro vira um anel (seção 4.5).
+
+### 4.5 Quantidades e regras dos cenários
+
+As quantidades vêm nos parâmetros `ships` e `arms`. As naves se chamam `N1`, `N2`, … e são declaradas em `SYNC_START`, junto com os recursos.
+
+**Disputa (`race`): qualquer braço livre.** Os braços formam um conjunto, declarado como **um único recurso** `ROBOTIC_ARMS` com `capacity` igual ao número de braços. A nave pede "um braço" e usa o que estiver livre. No backend é um semáforo contador: `new Semaphore(arms, true)`.
+
+| Situação | O que acontece |
+|---|---|
+| `sync=true` | No máximo `arms` naves usam os braços ao mesmo tempo. As demais ficam em `REQUEST` sem `ACQUIRE` até um braço ser liberado, por ordem de chegada |
+| `sync=false` | Toda nave entra direto. Há `COLLISION` sempre que o número de naves usando os braços passa de `arms` |
+| `ships` menor ou igual a `arms` | Há braço para todas: nenhuma espera e nenhuma colisão, com ou sem sincronismo |
+
+**Deadlock (`deadlock`): anel de naves.** Cada braço é um recurso separado de capacidade 1 (`ROBOTIC_ARM_A`, `ROBOTIC_ARM_B`, …), protegido por uma trava própria. A nave de número `i` pega primeiro o braço `i` e depois pede o braço `i + 1`; depois do último braço vem o primeiro de novo. É o jantar dos filósofos.
+
+| Situação | O que acontece |
+|---|---|
+| `ships` igual a `arms` | O ciclo inclui todas as naves |
+| `ships` menor que `arms` | O ciclo não fecha: a última nave encontra um braço livre, termina e libera a fila. Não há deadlock |
+| `ships` maior que `arms` | As primeiras naves formam o ciclo; as demais ficam na fila do primeiro braço que pediram |
+| `sync=false` | Ninguém espera: não há deadlock, e há `COLLISION` em cada braço usado por duas naves |
+
+Para o deadlock acontecer sempre, todas as naves precisam pegar o primeiro braço **antes** de qualquer uma pedir o segundo. Com threads reais isso pede um atraso controlado, ou uma barreira, entre as duas etapas.
+
+**Detalhes que o simulador da tela segue.** O backend não precisa repeti-los, mas, se seguir outros, a demonstração e o servidor mostrarão sequências diferentes (seção 5).
+
+| Detalhe | Regra do simulador |
+|---|---|
+| Vítima em `recovery=detection` | A nave de maior número dentro do ciclo |
+| `recovery=timeout` | Cada nave tem um tempo limite diferente; a de maior número no anel desiste primeiro. Se todas desistissem juntas, voltariam a travar juntas |
+| Depois de recuar (vítima ou timeout) | A nave solta o que tem, espera um intervalo e recomeça do primeiro braço |
+| Braço liberado com fila | Tem preferência a nave que já segura outro braço, pois é a que consegue terminar; entre as demais, vale a ordem de chegada |
 
 ---
 
@@ -253,17 +287,21 @@ O deadlock precisa de dois recursos de capacidade 1, pedidos em ordem oposta: a 
 |---|---|---|
 | [`escalonamento-fcfs.json`](../../src/main/resources/public/exemplos/escalonamento-fcfs.json) | FCFS na carga de referência | N1 0–8, N2 8–12, N3 12–21, N4 21–26; espera média 8,75 |
 | [`escalonamento-sjf.json`](../../src/main/resources/public/exemplos/escalonamento-sjf.json) | SJF não preemptivo na carga de referência | N1 0–8, N2 8–12, N4 12–17, N3 17–26; espera média 7,75 |
-| [`escalonamento-srtf.json`](../../src/main/resources/public/exemplos/escalonamento-srtf.json) | SJF preemptivo, com um `PREEMPT` | N1 0–1, N2 1–5, N4 5–10, N1 10–17, N3 17–26; espera média 6,5 |
-| [`sincronismo-corrida-desligado.json`](../../src/main/resources/public/exemplos/sincronismo-corrida-desligado.json) | `race` com `sync=false` | 2 colisões; carga 187 de 300 |
-| [`sincronismo-corrida-ligado.json`](../../src/main/resources/public/exemplos/sincronismo-corrida-ligado.json) | `race` com `sync=true` | 0 colisões; carga 300 de 300 |
+| [`escalonamento-priority.json`](../../src/main/resources/public/exemplos/escalonamento-priority.json) | Prioridade preemptiva com aging, com um `PREEMPT` | N1 0–1, N2 1–5, N4 5–10, N1 10–17, N3 17–26; espera média 6,5 |
+| [`sincronismo-corrida-desligado.json`](../../src/main/resources/public/exemplos/sincronismo-corrida-desligado.json) | `race` com `sync=false`, 3 naves e 1 braço | 2 colisões; carga 187 de 300 |
+| [`sincronismo-corrida-ligado.json`](../../src/main/resources/public/exemplos/sincronismo-corrida-ligado.json) | `race` com `sync=true`, 3 naves e 1 braço | 0 colisões; carga 300 de 300 |
 | [`sincronismo-deadlock-travado.json`](../../src/main/resources/public/exemplos/sincronismo-deadlock-travado.json) | `deadlock` com `recovery=none` | Termina em `DEADLOCKED` |
 | [`sincronismo-deadlock-recuperado.json`](../../src/main/resources/public/exemplos/sincronismo-deadlock-recuperado.json) | `deadlock` com `recovery=detection` | N2 é a vítima; termina em `COMPLETED` |
+| [`sincronismo-deadlock-timeout.json`](../../src/main/resources/public/exemplos/sincronismo-deadlock-timeout.json) | `deadlock` com `recovery=timeout` | N2 desiste no `TIMEOUT` e tenta de novo; termina em `COMPLETED` |
+| [`sincronismo-deadlock-desligado.json`](../../src/main/resources/public/exemplos/sincronismo-deadlock-desligado.json) | `deadlock` com `sync=false` | Ninguém espera: 2 colisões e nenhum deadlock |
 
-Os arquivos ficam em `src/main/resources/public/exemplos/`, junto do front, para o modo demonstração conseguir carregá-los. Os de escalonamento são uma gravação (seção 3.2). Os de sincronismo são a lista das mensagens do WebSocket, na ordem (seção 4.2). Ainda não há exemplo para `recovery=timeout` nem para o algoritmo de Prioridade (seção 8).
+Os arquivos ficam em `src/main/resources/public/exemplos/`, junto do front. Os de escalonamento são uma gravação (seção 3.2) e são carregados pelo modo demonstração. Os de sincronismo são a lista das mensagens do WebSocket, na ordem (seção 4.2), para as quantidades padrão; servem de referência do formato.
 
 Os exemplos de escalonamento foram gerados seguindo a ordem do tick do UML e conferem com as contas à mão do plano de trabalho. Os valores de `timeMs`, colisões e carga dos exemplos de sincronismo são ilustrativos: com threads reais, eles variam a cada execução.
 
-**Modo demonstração.** O front terá uma opção para reproduzir esses arquivos sem servidor. Ela serve para desenvolver a tela antes do backend e como plano B na apresentação.
+**Modo demonstração.** Sem servidor, a tela funciona sozinha: o escalonamento reproduz os arquivos de exemplo, e o sincronismo usa um simulador da própria tela (`js/sync/simulator.js`), que gera os eventos para qualquer quantidade de naves e braços seguindo as regras da seção 4.5. O parâmetro `?demo` na URL força esse modo. Ele serve para desenvolver a tela antes do backend e como plano B na apresentação.
+
+O simulador não usa threads: é uma conta, que dá sempre o mesmo resultado. As threads reais do servidor não são determinísticas, então a ordem dos eventos pode ser outra, e isso não é erro. Quando os dois divergirem em uma regra, o servidor é a referência e o simulador é ajustado.
 
 ---
 
@@ -305,6 +343,5 @@ Se o backend de uma cena não estiver pronto em 14/10, ela é apresentada no mod
 | Evento `AGING` | Está no enum, mas ninguém o emite e o evento não carrega a nova prioridade. O front o ignora até isso ser definido |
 | Várias portas | O contrato já suporta (`ports` é uma lista e todo evento tem `portId`), mas a tela desta entrega é desenhada para uma porta |
 | Outras cargas | `GET /api/scheduling` usa sempre a carga de referência. Um parâmetro `workload` pode entrar depois sem quebrar o contrato |
-| SJF preemptivo | O exemplo `escalonamento-srtf.json` usa o nome `Shortest Remaining Time First`; o nome real virá do `name()` quando a variante existir |
 | `contextSwitches` | Hoje é `double` no record e sai como `1.0`. O front aceita os dois formatos |
-| Exemplo de Prioridade | O resultado depende de o motor chamar ou não `resetPriority()` no despacho, o que ainda não foi decidido. Na carga de referência as duas opções divergem a partir do tick 12, então não há arquivo de exemplo; o algoritmo aparece na tela quando o servidor o listar |
+| `resetPriority()` | Decidido: o motor chama na preempção, e não no despacho (nota da seção 5 de [`docs/uml/README.md`](../uml/README.md)). O exemplo `escalonamento-priority.json` segue essa regra e usa o aging padrão do `PriorityScheduler` (intervalo 5, boost 1) |
