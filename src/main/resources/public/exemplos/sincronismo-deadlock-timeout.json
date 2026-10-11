@@ -1,0 +1,23 @@
+[
+  {"seq": 0, "timeMs": 0, "type": "SYNC_START", "scenario": "DEADLOCK", "sync": true, "recovery": "TIMEOUT", "spacecrafts": ["N1", "N2"], "resources": [{"id": "ROBOTIC_ARM_A", "capacity": 1}, {"id": "ROBOTIC_ARM_B", "capacity": 1}]},
+  {"seq": 1, "timeMs": 300, "type": "REQUEST", "spaceCraftId": "N1", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 2, "timeMs": 301, "type": "ACQUIRE", "spaceCraftId": "N1", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 3, "timeMs": 600, "type": "REQUEST", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 4, "timeMs": 601, "type": "ACQUIRE", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 5, "timeMs": 1200, "type": "REQUEST", "spaceCraftId": "N1", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 6, "timeMs": 1500, "type": "REQUEST", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 7, "timeMs": 3000, "type": "TIMEOUT", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 8, "timeMs": 3001, "type": "RELEASE", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 9, "timeMs": 3002, "type": "ACQUIRE", "spaceCraftId": "N1", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 10, "timeMs": 4200, "type": "RELEASE", "spaceCraftId": "N1", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 11, "timeMs": 4201, "type": "RELEASE", "spaceCraftId": "N1", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 12, "timeMs": 4202, "type": "DONE", "spaceCraftId": "N1"},
+  {"seq": 13, "timeMs": 4500, "type": "REQUEST", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 14, "timeMs": 4501, "type": "ACQUIRE", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 15, "timeMs": 5100, "type": "REQUEST", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 16, "timeMs": 5101, "type": "ACQUIRE", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 17, "timeMs": 6300, "type": "RELEASE", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_A"},
+  {"seq": 18, "timeMs": 6301, "type": "RELEASE", "spaceCraftId": "N2", "resourceId": "ROBOTIC_ARM_B"},
+  {"seq": 19, "timeMs": 6302, "type": "DONE", "spaceCraftId": "N2"},
+  {"seq": 20, "timeMs": 6400, "type": "SYNC_END", "reason": "COMPLETED", "collisions": 0}
+]
