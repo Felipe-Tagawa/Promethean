@@ -10,6 +10,9 @@ import java.util.List;
 
 public class SimulationEngine {
 
+    // Limite de segurança: nenhuma carga real chega perto disso, então passar daqui indica laço infinito
+    private static final int MAX_TICKS = 1000;
+
     private Scheduler scheduler;
     private List<DockingPort> ports;
     private List<SpaceCraft> all;
@@ -37,7 +40,14 @@ public class SimulationEngine {
 
     public SimulationMetrics run(){
         while (!isAllFinished(all)){
+            // Um erro de escalonador (nave que nunca termina) vira exceção em vez de travar o programa
+            if (clock > MAX_TICKS) {
+                throw new IllegalStateException("Simulation passed " + MAX_TICKS + " ticks with scheduler '"
+                        + scheduler.name() + "': some spacecraft never finishes.");
+            }
+
             admitArrivals();
+            scheduler.onTick(clock); // manutenção do escalonador (aging); precisa vir antes da decisão de preempção
             handleRunning();
             dispatchIdlePorts();
             advanceTime();
