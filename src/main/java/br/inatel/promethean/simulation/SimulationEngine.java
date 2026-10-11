@@ -1,6 +1,7 @@
 package br.inatel.promethean.simulation;
 
 import br.inatel.promethean.model.DockingPort;
+import br.inatel.promethean.model.ProcessState;
 import br.inatel.promethean.model.SpaceCraft;
 import br.inatel.promethean.scheduler.Scheduler;
 
@@ -35,11 +36,23 @@ public class SimulationEngine {
     }
 
     public SimulationMetrics run(){
+        for (int i = 0; i < 3; i++) {
+            admitArrivals();
+            dispatchIdlePorts();
+            advanceTime();
+        }
+
         return null;
     }
 
     private void admitArrivals(){
-
+        for (SpaceCraft spaceCraft : all) {
+            if(spaceCraft.getArrivalTime() == clock && spaceCraft.getState() == ProcessState.NEW){
+                spaceCraft.setState(ProcessState.READY);
+                scheduler.addToReady(spaceCraft, clock);
+                emit(EventType.ARRIVAL, spaceCraft, null);
+            }
+        }
     }
 
     private void handleRunning(){
@@ -47,11 +60,18 @@ public class SimulationEngine {
     }
 
     private void dispatchIdlePorts(){
-
+        for (DockingPort dockingPort : ports) {
+            if (dockingPort.isIdle() && scheduler.hasReady()) {
+                SpaceCraft spaceCraft = scheduler.selectNext(clock);
+                spaceCraft.markStart(clock);
+                dockingPort.dock(spaceCraft);
+                emit(EventType.DISPATCH, spaceCraft, dockingPort);
+            }
+        }
     }
 
     private void advanceTime(){
-
+        clock++;
     }
 
     private void emit(EventType type, SpaceCraft s, DockingPort p){
