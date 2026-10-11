@@ -190,6 +190,7 @@ classDiagram
   - `waitTick()`: nave em READY acumula espera (`waitingTime++`, `timeInCurrentState++`).
   - `markStart` / `markFinish`: registram os tempos usados nas métricas. `markStart` só grava na **primeira** vez (`startTime == -1`).
   - `age` / `resetPriority`: aging. Número **menor** = prioridade **maior**, então `age` **diminui** `currentPriority` (mínimo 0).
+    `resetPriority` devolve a nave à `basePriority` e é chamado pelo motor quando ela é **preemptada**, não quando atraca (ver a nota da seção 5).
 - `DockingPort` é um **núcleo de CPU**. `quantumUsed` conta quantos ticks a nave atual já usou; o Round Robin decide olhando esse número.
 - Os três escalonadores só diferem em **dois pontos**: o tipo de fila e a regra de `shouldPreempt`.
 
@@ -332,7 +333,7 @@ stateDiagram-v2
     [*] --> NEW : new SpaceCraft(...)
     NEW --> READY : chegada · scheduler.addToReady()
     READY --> RUNNING : despacho · selectNext() + port.dock() + markStart()
-    RUNNING --> READY : preempção · shouldPreempt() → undock() + addToReady()
+    RUNNING --> READY : preempção · shouldPreempt() → undock() + resetPriority() + addToReady()
     RUNNING --> FINISHED : isFinished() · markFinish() + undock()
     RUNNING --> BLOCKED : pede recurso (Fase 4)
     BLOCKED --> READY : recurso liberado (Fase 4)
@@ -394,7 +395,7 @@ sequenceDiagram
             E->>S: shouldPreempt(nave, porta, t)
             opt resposta true
                 E->>P: undock()
-                E->>N: setState(READY)
+                E->>N: setState(READY) + resetPriority()
                 E->>S: addToReady(nave, t)
                 E-->>L: PREEMPT
             end
@@ -419,6 +420,8 @@ sequenceDiagram
     E->>N: waitTick() nas naves em READY
     Note over E: clock++
 ```
+
+**Quando a prioridade envelhecida é desfeita:** o motor chama `resetPriority()` na **preempção**, junto com o `setState(READY)`, e não no despacho. Enquanto está na porta, a nave mantém a prioridade que conquistou pelo aging; ao voltar para a órbita, recomeça da `basePriority`. Se o reset fosse feito no despacho, a nave perderia o bônus no instante em que atraca e seria expulsa no tick seguinte pela nave que acabou de tirar da porta. Na carga de referência (N1 a N4), isso daria 3 preempções, com N1 e N3 se revezando nos ticks 12 e 13; com o reset na preempção há só 1.
 
 **Custo da troca de contexto (Δt), Fase 3:** quando uma porta recebe uma nave diferente da anterior, ela fica `contextSwitchCost` ticks "manobrando" antes de a nave começar a executar. O motor soma 1 em `contextSwitches` a cada troca.
 

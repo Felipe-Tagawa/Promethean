@@ -1,0 +1,383 @@
+/* Cena de sincronismo. Usa as cores e os painéis de style.css. */
+
+.layout-sync {
+    grid-template-areas:
+        "controls controls"
+        "scene    side"
+        "log      result";
+}
+
+.side-panel { grid-area: side; }
+.log-panel { grid-area: log; }
+.result-panel { grid-area: result; }
+
+.side-panel h2:not(:first-child),
+.result-panel h2:not(:first-child) {
+    margin-top: 18px;
+}
+
+/* ---------- controles ---------- */
+
+.segmented {
+    display: flex;
+    align-items: center;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.segmented > span {
+    margin-right: 8px;
+}
+
+.segmented label {
+    position: relative;
+    cursor: pointer;
+}
+
+.segmented input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.segmented label > span {
+    display: flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 14px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+}
+
+.segmented label:first-of-type > span { border-radius: 8px 0 0 8px; }
+.segmented label:last-of-type > span { border-radius: 0 8px 8px 0; border-left: 0; }
+
+.segmented input:checked + span {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #04121c;
+    font-weight: 600;
+}
+
+.segmented input:focus-visible + span {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.switch {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 12px 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.switch-title {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.switch input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.switch-track {
+    position: relative;
+    width: 46px;
+    height: 26px;
+    background: var(--danger);
+    border-radius: 999px;
+    transition: background .2s;
+}
+
+.switch-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: #04121c;
+    border-radius: 50%;
+    transition: transform .2s;
+}
+
+.switch input:checked ~ .switch-track { background: var(--state-running); }
+.switch input:checked ~ .switch-track .switch-thumb { transform: translateX(20px); }
+.switch input:focus-visible ~ .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.switch-state {
+    min-width: 76px;
+    font-weight: 600;
+    color: var(--danger);
+}
+
+.switch input:checked ~ .switch-state { color: var(--state-running); }
+
+.field[hidden] {
+    display: none;
+}
+
+.layout-sync .controls {
+    gap: 10px 16px;
+}
+
+.stepper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.stepper-title {
+    margin-right: 4px;
+}
+
+.stepper button {
+    width: 32px;
+    height: 36px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.stepper button:hover:not(:disabled) {
+    border-color: var(--muted);
+}
+
+.stepper button:disabled {
+    color: var(--line);
+    cursor: default;
+}
+
+.stepper output {
+    min-width: 24px;
+    color: var(--text);
+    font: 600 16px/1 ui-monospace, Consolas, monospace;
+    text-align: center;
+}
+
+.run-status {
+    margin-left: auto;
+    padding: 6px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.run-status[data-phase="running"] { border-color: var(--accent); color: var(--accent); }
+.run-status[data-phase="COMPLETED"] { border-color: var(--state-running); color: var(--state-running); }
+.run-status[data-phase="DEADLOCKED"] { border-color: var(--danger); color: var(--danger); }
+
+/* ---------- avisos sobre a cena ---------- */
+
+.scene-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    min-height: 50px;
+    padding: 8px 12px;
+    background: #050817;
+    border-bottom: 1px solid var(--line);
+}
+
+.sync-badge, .deadlock-banner {
+    padding: 6px 14px;
+    border: 1px solid var(--state-running);
+    border-radius: 999px;
+    color: var(--state-running);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.sync-badge[data-sync="false"] { border-color: var(--danger); color: var(--danger); }
+
+.deadlock-banner {
+    background: #2a1220;
+    border-color: var(--danger);
+    border-radius: 8px;
+    color: #ffd7de;
+    font-size: 15px;
+    animation: alarm 1s ease-in-out infinite;
+}
+
+.deadlock-banner[hidden] {
+    display: none;
+}
+
+/* ---------- braços ---------- */
+
+.arm-link { fill: none; stroke: #8c9ac0; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+.arm-joint { fill: #1c2748; stroke: #8c9ac0; stroke-width: 2; }
+.arm-claw { fill: #3a4a80; stroke: #0f1629; stroke-width: 2; transition: fill .3s; }
+.arm[data-busy="true"] .arm-claw { fill: var(--holder); }
+.arm[data-over="true"] .arm-claw { fill: var(--danger); }
+.arm[data-busy="true"] .port-slot { opacity: 0; }
+.arm-label { fill: var(--text); font-size: 14px; font-weight: 600; }
+.arm-status { fill: var(--muted); font-size: 12px; }
+.arm[data-over="true"] .arm-status { fill: var(--danger); font-weight: 600; }
+
+.burst { opacity: 0; pointer-events: none; }
+.burst polygon { fill: var(--danger); }
+.burst.is-bursting { animation: burst .9s ease-out; }
+
+[data-deadlock="true"] .hub-light { fill: var(--danger); animation: alarm 1s ease-in-out infinite; }
+
+/* ---------- naves ---------- */
+
+.ship[data-state="BLOCKED"] .ship-shake { opacity: .6; }
+.ship[data-state="BLOCKED"] .ship-rest { fill: var(--state-ready); }
+.ship.in-deadlock .ship-rest { fill: var(--danger); font-weight: 600; }
+.ship.is-shaking .ship-shake { animation: shake .5s ease-in-out; }
+.ship.is-flashing .ship-shake { animation: flash .9s ease-in-out; }
+
+.state-BLOCKED { color: var(--danger); }
+
+/* ---------- setas (cena e grafo) ---------- */
+
+.edge line { stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; }
+.edge polygon { fill: currentColor; }
+.edge-wait line { stroke-dasharray: 6 6; }
+.edge.is-deadlock { color: var(--danger) !important; }
+.edge.is-deadlock line { stroke-width: 3.5; animation: march .6s linear infinite; }
+.edges .edge { animation: fade-in .4s ease .5s both; }
+
+/* ---------- grafo de espera ---------- */
+
+.wait-graph {
+    display: block;
+    width: 100%;
+    max-height: 210px;
+}
+
+.graph-ship circle { fill: var(--panel-2); stroke-width: 2.5; }
+.graph-ship text { fill: var(--text); font-size: 13px; font-weight: 700; }
+.graph-ship.is-done { opacity: .35; }
+.graph-resource rect { fill: var(--panel-2); stroke: var(--muted); stroke-width: 2; }
+.graph-resource text { fill: var(--text); font-size: 15px; font-weight: 700; }
+.graph-resource .graph-caption { fill: var(--muted); font-size: 11px; font-weight: 400; }
+.graph-resource .graph-unit { fill: var(--text); }
+
+.key {
+    display: inline-block;
+    width: 24px;
+    margin-right: 6px;
+    border-top: 2.5px solid var(--text);
+    vertical-align: middle;
+}
+
+.key-wait { border-top-style: dashed; }
+
+/* ---------- registro e resultado ---------- */
+
+.log-panel .event-log {
+    max-height: 230px;
+}
+
+.log-panel .event-log li {
+    grid-template-columns: 52px minmax(0, 1fr);
+}
+
+.event-log li.is-alert .log-text {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.tiles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+}
+
+.tiles div {
+    padding: 10px 12px;
+    background: var(--panel-2);
+    border-radius: 8px;
+}
+
+.tiles dt {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.tiles dd {
+    margin: 2px 0 0;
+    font-size: 19px;
+    font-weight: 600;
+}
+
+.tiles dd.is-bad {
+    color: var(--danger);
+}
+
+.lesson {
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+/* ---------- animações ---------- */
+
+@keyframes burst {
+    0% { opacity: .95; transform: scale(.3); }
+    55% { opacity: .85; transform: scale(1.1); }
+    100% { opacity: 0; transform: scale(1.3); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translate(0, 0); }
+    20% { transform: translate(-5px, 3px); }
+    40% { transform: translate(5px, -3px); }
+    60% { transform: translate(-4px, -2px); }
+    80% { transform: translate(4px, 2px); }
+}
+
+@keyframes flash {
+    0%, 50%, 100% { opacity: 1; }
+    25%, 75% { opacity: .15; }
+}
+
+@keyframes alarm {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .55; }
+}
+
+@keyframes march {
+    to { stroke-dashoffset: -12; }
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@media (max-width: 1100px) {
+    .layout-sync {
+        grid-template-areas: "controls" "scene" "side" "result" "log";
+    }
+
+    .run-status {
+        margin-left: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .deadlock-banner, [data-deadlock="true"] .hub-light, .edge.is-deadlock line {
+        animation: none;
+    }
+}
