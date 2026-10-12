@@ -219,13 +219,23 @@ public class SyncScenarioManager {
                         // MODO NORMAL OU DETECTION:
                         try {
                             locks.get(secondArm).lockInterruptibly();
+                            emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
                         } catch (InterruptedException e) {
                             // Abortada como vítima pelo monitor de deadlock!
+                            // Solta o primeiro braço e recua
                             locks.get(firstArm).unlock();
                             emit(Map.of("type", "RELEASE", "spaceCraftId", shipId, "resourceId", firstArm));
-                            return; // Encerra a thread da vítima
+
+                            // Espera o colega terminar e tenta de novo do zero (Rollback & Retry)
+                            Thread.sleep(1200);
+                            emit(Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", firstArm));
+                            locks.get(firstArm).lock();
+                            emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", firstArm));
+
+                            emit(Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", secondArm));
+                            locks.get(secondArm).lock();
+                            emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
                         }
-                        emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
                     }
 
                     // Trabalha com os dois braços
@@ -271,7 +281,8 @@ public class SyncScenarioManager {
                     Thread victimThread = shipThreads.get(shipCount - 1);
                     victimThread.interrupt();
 
-                    Thread.sleep(1500);
+                    // Aguarda a outra terminar e a vítima tentar de novo até o fim
+                    Thread.sleep(2500);
                     emit(Map.of("type", "SYNC_END", "reason", "COMPLETED"));
 
                 } else if ("timeout".equals(recovery)) {
