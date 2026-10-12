@@ -206,7 +206,7 @@
     gap: 8px 12px;
     min-height: 50px;
     padding: 8px 12px;
-    background: #050817;
+    background: var(--scene-bg);
     border-bottom: 1px solid var(--line);
 }
 
@@ -242,8 +242,8 @@
 .arm[data-busy="true"] .arm-claw { fill: var(--holder); }
 .arm[data-over="true"] .arm-claw { fill: var(--danger); }
 .arm[data-busy="true"] .port-slot { opacity: 0; }
-.arm-label { fill: var(--text); font-size: 14px; font-weight: 600; }
-.arm-status { fill: var(--muted); font-size: 12px; }
+.arm-label { fill: var(--text); font-size: 14px; font-weight: 600; paint-order: stroke; stroke: var(--scene-bg); stroke-width: 3px; stroke-linejoin: round; }
+.arm-status { fill: var(--muted); font-size: 12px; paint-order: stroke; stroke: var(--scene-bg); stroke-width: 3px; stroke-linejoin: round; }
 .arm[data-over="true"] .arm-status { fill: var(--danger); font-weight: 600; }
 
 .burst { opacity: 0; pointer-events: none; }

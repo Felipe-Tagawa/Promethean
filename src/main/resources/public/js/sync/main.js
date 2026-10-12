@@ -6,6 +6,7 @@ import {simulate, normalize, LIMITS, DEFAULT_COUNTS} from './simulator.js';
 import {createState, applyEvent, describeBatch, statusOf, findResource, heldName, wantedName} from './model.js';
 import {SyncScene} from './scene.js';
 import {WaitGraph} from './graph.js';
+import {bindUniverseSelect} from '../universe.js';
 
 const END_LABELS = {COMPLETED: 'Concluído', DEADLOCKED: 'Travado em deadlock', STOPPED: 'Interrompido'};
 const OUTCOME_LABELS = {COMPLETED: 'Concluído', DEADLOCKED: 'Deadlock', STOPPED: 'Interrompido'};
@@ -45,7 +46,11 @@ const steppers = {
 const PLAY_ICON = 'M7 4l13 8-13 8z';
 const STOP_ICON = 'M6 6h12v12H6z';
 
-const scene = new SyncScene($('sync-scene'));
+// O universo é só aparência: trocar não interrompe o cenário em execução
+const scene = new SyncScene($('sync-scene'), bindUniverseSelect($('universe'), universe => {
+    scene.setUniverse(universe);
+    if (state) render([], false);
+}));
 const graph = new WaitGraph($('wait-graph'));
 const pump = new EventPump(onBatch, Number(els.pace.value));
 

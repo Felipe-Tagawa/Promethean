@@ -1,7 +1,10 @@
 // Cena de sincronismo em SVG: as naves (threads) disputam os braços robóticos (recursos) da estação.
 // Aceita qualquer quantidade de naves e braços; com muitos, as naves são desenhadas menores.
 
-import {svg, text, drawSky, drawHull, arrow} from '../svg.js';
+import {svg, text, arrow} from '../svg.js';
+import {drawHull} from '../hulls.js';
+import {drawSky, drawStationBody, drawStationHub} from '../stations.js';
+import {hullFor} from '../universe.js';
 import {statusOf, resourceLabel, resourceShort, isPool, heldName, wantedName, occupants, findResource, joinNames} from './model.js';
 
 const STATION = {x: 858, y: 250};
@@ -23,39 +26,40 @@ function spread(index, count, maxSpacing) {
 
 export class SyncScene {
 
-    constructor(root) {
+    /** @param universe o universo em uso (universe.js): define o fundo, a estação e os cascos */
+    constructor(root, universe) {
         this.root = root;
+        this.universe = universe;
         this.signature = '';
         this.arms = new Map();   // "recurso#posição" -> braço desenhado
         this.ships = new Map();
         this.edges = new Map();
         this.metrics = {scale: 1.3, bayX: 588, queueStep: 150};
 
-        drawSky(root);
-        this.buildStation();
+        this.backdrop = svg('g', {class: 'backdrop'}, root);
         this.armLayer = svg('g', {class: 'arms'}, root);
         this.edgeLayer = svg('g', {class: 'edges'}, root);
         this.shipLayer = svg('g', {class: 'ships'}, root);
-
-        const legend = svg('g', {class: 'scene-legend'}, root);
-        text('nave = thread · braço robótico = recurso compartilhado', {x: 18, y: 478}, legend);
-        text('seta tracejada = a nave presa a um braço espera o outro', {x: 18, y: 494}, legend);
+        this.buildBackdrop();
     }
 
-    buildStation() {
-        const g = svg('g', {class: 'station', 'aria-hidden': 'true'}, this.root);
-        const {x, y} = STATION;
-        for (const dir of [-1, 1]) {
-            svg('line', {x1: x + 30, y1: y + dir * 40, x2: x + 62, y2: y + dir * 96, class: 'station-strut'}, g);
-            const top = dir < 0 ? y - 144 : y + 96;
-            svg('rect', {x: x + 26, y: top, width: 80, height: 48, rx: 3, class: 'solar'}, g);
-            for (let i = 1; i < 4; i++) {
-                svg('line', {x1: x + 26 + i * 20, y1: top, x2: x + 26 + i * 20, y2: top + 48, class: 'solar-grid'}, g);
-            }
-            svg('line', {x1: x + 26, y1: top + 24, x2: x + 106, y2: top + 24, class: 'solar-grid'}, g);
-        }
-        const ring = svg('circle', {cx: x, cy: y, r: 60, class: 'hub-ring'}, g);
-        ring.style.transformOrigin = `${x}px ${y}px`;
+    /** Troca o universo: refaz o fundo e a estação. Braços e naves são refeitos no próximo render. */
+    setUniverse(universe) {
+        this.universe = universe;
+        this.buildBackdrop();
+        this.signature = '';
+    }
+
+    buildBackdrop() {
+        this.backdrop.replaceChildren();
+        drawSky(this.backdrop, this.universe.key);
+
+        const station = svg('g', {class: 'station', 'aria-hidden': 'true'}, this.backdrop);
+        drawStationBody(station, this.universe.key, STATION.x, STATION.y, true);
+
+        const legend = svg('g', {class: 'scene-legend'}, this.backdrop);
+        text('nave = thread · braço robótico = recurso compartilhado', {x: 18, y: 478}, legend);
+        text('seta tracejada = a nave presa a um braço espera o outro', {x: 18, y: 494}, legend);
     }
 
     armKey(resourceId, slot = 0) {
@@ -108,16 +112,14 @@ export class SyncScene {
 
         // O centro da estação fica por cima dos braços
         const hub = svg('g', {class: 'hub-group', 'aria-hidden': 'true'}, this.armLayer);
-        svg('circle', {cx: STATION.x, cy: STATION.y, r: 46, class: 'hub'}, hub);
-        svg('circle', {cx: STATION.x, cy: STATION.y, r: 26, class: 'hub-core'}, hub);
-        svg('circle', {cx: STATION.x, cy: STATION.y, r: 8, class: 'hub-light'}, hub);
+        drawStationHub(hub, this.universe.key, STATION.x, STATION.y);
 
         state.ships.forEach(ship => {
             const g = svg('g', {class: 'ship', 'data-state': 'READY'}, this.shipLayer);
             g.style.setProperty('--ship-color', ship.color);
             const bob = svg('g', {class: 'ship-bob'}, g);
             bob.style.animationDelay = `${-(ship.order * 0.7)}s`;
-            drawHull(svg('g', {class: 'ship-shake'}, bob), scale);
+            drawHull(svg('g', {class: 'ship-shake'}, bob), scale, hullFor(this.universe, ship.order));
             text(ship.id, {y: -(11 * scale + 16), 'text-anchor': 'middle', class: 'ship-id'}, bob);
             const note = text('', {y: 11 * scale + 24, 'text-anchor': 'middle', class: 'ship-rest'}, bob);
             this.ships.set(ship.id, {g, note});

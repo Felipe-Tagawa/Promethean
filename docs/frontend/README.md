@@ -14,6 +14,8 @@ Este documento define **o que o servidor envia e o que o front espera receber**.
 6. [O que o contrato pede de cada parte](#6-o-que-o-contrato-pede-de-cada-parte)
 7. [Ordem de entrega e de corte](#7-ordem-de-entrega-e-de-corte)
 8. [Pontos em aberto](#8-pontos-em-aberto)
+9. [Universos](#9-universos)
+10. [Ameaças](#10-ameaças)
 
 ---
 
@@ -28,6 +30,8 @@ Este documento define **o que o servidor envia e o que o front espera receber**.
 | Reprodução | Replay: o servidor roda a simulação inteira e envia o registro; o front tem play, pausa, passo, velocidade e voltar no tempo |
 | Visual | Cena espacial estilizada |
 | Comparação | Um algoritmo por vez na cena, com tabela de métricas e Gantts empilhados |
+| Universos | Um seletor troca a estação, as naves, o fundo e o contexto das prioridades. É só aparência: não muda o contrato (seção 9) |
+| Ameaças | Um seletor aplica um imprevisto ao escalonamento. O padrão é "Nenhuma"; com uma ameaça, quem recalcula é a tela, não o servidor (seção 10) |
 
 ---
 
@@ -131,6 +135,8 @@ O front não recebe o estado da estação a cada tick. Ele o reconstrói aplican
 | Ordem na órbita | Ordem em que as naves entraram em `READY` (`ARRIVAL` ou `PREEMPT`) |
 | Gantt | Pares `DISPATCH` → `PREEMPT`/`FINISH` |
 | Espera e turnaround por nave | Ticks em `READY` e `FINISH − arrivalTime` |
+| Nível de urgência de cada nave | Posição do `basePriority` entre os valores da carga; o menor número é o mais urgente, como no `PriorityScheduler` |
+| Espera da nave mais urgente | Ticks em `READY` da nave de menor `basePriority`, em cada algoritmo |
 | Médias e trocas de contexto | Vêm prontas em `metrics` |
 
 ### 3.5 Exemplo
@@ -347,3 +353,133 @@ Se o backend de uma cena não estiver pronto em 14/10, ela é apresentada no mod
 | `resetPriority()` | Decidido: o motor chama na preempção, e não no despacho (nota da seção 5 de [`docs/uml/README.md`](../uml/README.md)). O exemplo `escalonamento-priority.json` segue essa regra e usa o aging padrão do `PriorityScheduler` (intervalo 5, boost 1) |
 | Deadlock com `sync=false` | O servidor ignora o parâmetro nesse cenário e roda com as travas. Enquanto for assim, a tela, no modo servidor, trava o botão de sincronismo em "ligado" quando o cenário é deadlock (`isSyncLocked` em `js/sync/main.js`). No modo demonstração o botão continua livre, porque o simulador cobre o caso |
 | Deadlock com mais naves que braços | No servidor, as naves extras podem tomar o braço de uma nave do anel antes de ele se formar, e com naves em número igual ou maior que o dobro dos braços a recuperação nunca termina. Enquanto for assim, a tela, no modo servidor, limita o deadlock a uma nave por braço (`serverShipCap` em `js/sync/main.js`). Quando o backend tratar esses casos, o limite sai |
+
+---
+
+## 9. Universos
+
+O seletor **Universo**, na barra de cima das duas páginas, troca a aparência da tela. Ele não altera a simulação, os eventos nem nenhuma rota: o servidor não sabe qual universo está em uso.
+
+| Universo | Estação | Naves (da mais urgente para a menos) | Fundo |
+|---|---|---|---|
+| Padrão | A original | A original | O original |
+| Star Wars | Estrela da Morte | Millennium Falcon, X-wing, Star Destroyer, caça TIE | Planeta desértico e dois sóis |
+| Halo | Estrutura Forerunner | Fragata da UNSC, Pelican, cruzador do Covenant, nave Promethean | Anel Halo |
+| Real (ISS) | ISS | Soyuz, Crew Dragon, ônibus espacial, cargueiro Cygnus | Terra |
+| Alien | Sevastopol | Nostromo, Narcissus, Sulaco, nave abandonada | Gigante gasoso |
+| Destiny | A Torre da Última Cidade | Nave de salto do Guardião, Esquife dos Decaídos, Debulhador Cabal, Nave-tumba da Colmeia | O Viajante e as montanhas da cidade |
+
+**Contexto das prioridades.** Cada universo dá uma situação a cada nível de prioridade (por exemplo, "Feridos a bordo"). Ela aparece no selo ao lado da nave, na segunda linha da tabela de naves e no evento de chegada. O nível vem do `basePriority` que já está na gravação, então vale para os três algoritmos. É o que permite comparar: no FCFS e no SJF a nave mais urgente espera 7 ticks; na Prioridade, 0. Esse número aparece na última coluna das métricas e no canto da cena.
+
+No escalonamento, a nave usa o casco do nível de prioridade dela, para o desenho combinar com a situação. No sincronismo não há prioridade, então vale a ordem das naves.
+
+**Onde fica cada coisa.**
+
+| Arquivo | Conteúdo |
+|---|---|
+| `js/universe.js` | A lista de universos (nomes, cascos, situações), a escolha salva no navegador e o seletor |
+| `js/hulls.js` | O desenho de cada casco e os efeitos de emergência (faíscas, aura, vazamento) |
+| `js/stations.js` | O céu e a estação de cada universo |
+| `js/icons.js` | Os ícones das situações |
+| `css/universe.css` | As cores de cada universo e o estilo das peças novas |
+
+A escolha fica guardada no navegador e vale nas duas páginas. `?universo=chave` na URL abre direto em um universo (`padrao`, `starwars`, `halo`, `real`, `alien` ou `destiny`).
+
+Para criar um universo: uma entrada em `UNIVERSES`, os cascos em `hulls.js`, a estação e o céu em `stations.js` e um bloco de cores em `universe.css`. Os cascos precisam caber na caixa do casco original (x de -41 a 37, y de -20 a 20), porque as duas cenas posicionam naves e rótulos contando com esse tamanho.
+
+Os desenhos são silhuetas feitas à mão em SVG, sem imagens nem logos de terceiros, e a tela continua funcionando sem internet.
+
+---
+
+## 10. Ameaças
+
+O seletor **Ameaça**, na página de escalonamento, aplica um imprevisto à simulação: uma nave é atingida, destruída ou a porta fica interditada. É um extra da tela, feito para a apresentação.
+
+**O padrão é "Nenhuma", e com ele nada muda.** A tela reproduz a gravação do servidor, como descrito na seção 3. A escolha não fica salva: a página sempre abre em "Nenhuma".
+
+**Com uma ameaça ativa, quem calcula é a tela.** O servidor não conhece ameaças, então a simulação é refeita por `js/engine.js`, uma cópia em JavaScript do `SimulationEngine` e dos três escalonadores. O aviso do canto de cima troca "Dados do servidor" por "Simulação da tela: nome da ameaça".
+
+**A cópia é conferida a cada carga da página.** Antes de liberar o seletor, a tela roda o motor dela sem ameaça e compara os eventos com os da gravação recebida, nos três algoritmos. Se houver qualquer diferença (por exemplo, uma mudança na regra de aging do servidor), o seletor fica desabilitado.
+
+### 10.1 Efeitos
+
+| Efeito | O que acontece | Conceito de SO |
+|---|---|---|
+| `priority` | A nave passa na frente de todas, inclusive da que já era a mais urgente | Mudança de prioridade em tempo de execução |
+| `burst` | A nave precisa de mais ticks de porta | O processo passa a precisar de mais CPU |
+| `destroy` | A nave sai da órbita ou da porta sem terminar | Processo encerrado à força |
+| `port` | A porta fica interditada por alguns ticks | Núcleo de CPU fora de serviço |
+| `destroy` com `revive` | A nave destruída volta à órbita alguns ticks depois e recomeça do zero | Processo reiniciado por um supervisor depois de cair |
+
+Regras decididas:
+
+- **Uma ameaça por vez**, aplicada igual aos três algoritmos, para a comparação continuar justa.
+- **Roteiro fixo.** Cada ameaça acontece sempre no mesmo tick e escolhe o alvo pelo papel da nave (a menos urgente, a atracada), não pelo nome. O resultado se repete e dá para voltar no tempo.
+- **Nave destruída fica fora das médias.** Espera, turnaround e resposta consideram só as naves que terminaram; as perdidas aparecem em um contador.
+- **Porta interditada: a nave atracada fica parada.** Ela não avança nem perde o lugar, e não conta troca de contexto. As naves na órbita continuam esperando (e envelhecendo, no algoritmo de prioridade).
+- **Diferença para a simulação sem ameaça.** Embaixo de cada métrica aparece quanto ela mudou.
+- **Reviver só existe no Destiny, e só para a nave do Guardião.** A nave revivida volta para o fim da órbita, perde o que já tinha executado e não conta como perdida. O tempo em que ficou destruída não é espera.
+
+No FCFS e no SJF, uma nave que vira prioridade máxima continua esperando, porque esses algoritmos ignoram a prioridade. Só no de Prioridade ela fura a fila.
+
+### 10.2 Lista por universo
+
+| Universo | Ameaça | Tick | O que acontece |
+|---|---|---|---|
+| Padrão | Chuva de asteroides | 4 | A nave menos urgente vira prioridade máxima |
+| | Tempestade solar | 6 | Porta interditada por 4 ticks |
+| | Pane no motor | 5 | A nave de maior burst precisa de mais 4 ticks |
+| | Colisão | 6 | A segunda nave mais urgente é destruída |
+| Star Wars | Ataque rebelde | 5 | O Star Destroyer vira prioridade máxima e precisa de mais 2 ticks |
+| | Torpedo de prótons | 7 | O caça TIE é destruído |
+| | Sabotagem do raio trator | 3 | Porta interditada por 3 ticks |
+| Halo | Flood se espalha | 4, 8, 12… | A cada 4 ticks, a primeira nave da órbita ainda não infectada vira prioridade máxima |
+| | Raio de vitrificação | 6 | A nave atracada é destruída |
+| | Pulso do anel | 5 | Porta interditada por 3 ticks; cada nave na órbita precisa de mais 1 tick |
+| Real (ISS) | Detritos espaciais | 4 | A nave atracada precisa de mais 3 ticks |
+| | Tempestade solar | 5 | Porta interditada por 5 ticks |
+| | Missão abortada | 6 | A nave menos urgente deixa a órbita sem atracar |
+| Alien | Organismo à solta | 7 | A nave atracada precisa de mais 5 ticks |
+| | Autodestruição | 3 | A nave mais urgente é destruída |
+| | Quarentena da estação | 4 | Porta interditada por 4 ticks |
+| Destiny | Emboscada Cabal | 3 | A nave do Guardião é destruída e o Fantasma a revive 4 ticks depois |
+| | Chegada da Frota Negra | 5 | Porta interditada por 4 ticks, com a Pirâmide sobre a Torre |
+| | Laço temporal Vex | 6 | A nave atracada precisa de mais 4 ticks |
+| | Possuída por Oryx | 7 | A nave menos urgente deixa a órbita e não volta |
+
+Se o alvo não estiver na órbita nem atracado no tick marcado, a ameaça espera o primeiro tick em que ele estiver.
+
+### 10.3 Eventos de ameaça
+
+Só existem nas gravações do motor da tela; o servidor não os envia.
+
+```json
+{"tick": 4, "type": "THREAT", "spaceCraftId": "N3", "portId": null,
+ "effects": [{"kind": "priority", "priority": 0}],
+ "text": "N3 foi atingida pelos asteroides e virou prioridade máxima"}
+```
+
+| `kind` em `effects` | Campos | Observação |
+|---|---|---|
+| `priority` | `priority` | Nova prioridade base da nave |
+| `burst` | `amount`, `burstTime` | Quanto cresceu e o novo total |
+| `destroy` | `style` | `explode`, `abort` ou `taken`; `portId` vem preenchido se a nave estava atracada |
+| `revive` | | A nave volta ao estado `READY`, com o burst inteiro por executar |
+| `port-down` | `until` | Tick em que a porta reabre; `spaceCraftId` é `null` |
+| `port-up` | | A porta voltou a operar |
+
+A nave destruída fica no estado `KILLED`, que só existe na tela.
+
+### 10.4 Onde fica cada coisa
+
+| Arquivo | Conteúdo |
+|---|---|
+| `js/threats.js` | A lista de ameaças de cada universo: tick, alvo, efeitos, frase do registro e como é desenhada |
+| `js/engine.js` | A cópia do motor e dos escalonadores, e a aplicação das ameaças |
+| `js/threatfx.js` | As animações passageiras (asteroides, caça inimigo, raio, explosão, ondas) |
+| `js/timeline.js` | Leitura dos eventos `THREAT`: nave perdida, porta interditada, burst alterado |
+| `css/universe.css` | O estilo do seletor, da porta interditada e das marcas no Gantt |
+
+Para criar uma ameaça basta uma entrada em `js/threats.js`; os efeitos e as animações já existentes são reaproveitados.
+
+Se as regras do motor Java mudarem, `js/engine.js` precisa mudar junto. Enquanto isso não for feito, a conferência descrita acima mantém o seletor desabilitado, e o resto da tela continua funcionando.

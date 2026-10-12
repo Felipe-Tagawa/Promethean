@@ -7,6 +7,7 @@
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/sync.css">
+    <link rel="stylesheet" href="css/universe.css">
 </head>
 <body>
 
@@ -19,13 +20,17 @@
         </svg>
         <div>
             <h1>Promethean</h1>
-            <p>Sincronismo e deadlock nos braços robóticos</p>
+            <p data-universe-text="Sincronismo e deadlock nos braços robóticos {of}">Sincronismo e deadlock nos braços robóticos</p>
         </div>
     </div>
     <nav class="tabs" aria-label="Cenas">
         <a href="index.html">Escalonamento</a>
         <a href="sincronismo.html" aria-current="page">Sincronismo</a>
     </nav>
+    <label class="field universe-field">
+        <span>Universo</span>
+        <select id="universe" title="Troca a estação e as naves. O cenário é o mesmo."></select>
+    </label>
     <div class="source" id="source" hidden>
         <span class="source-dot" aria-hidden="true"></span>
         <span id="source-text"></span>

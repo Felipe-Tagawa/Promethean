@@ -52,6 +52,22 @@ export class Gantt {
                 label.textContent = segment.spaceCraftId;
                 seg.append(label);
             }
+            // Só existem com uma ameaça ativa: porta interditada e nave perdida
+            for (const outage of entry.timeline.outages) {
+                const block = div('gantt-outage', track);
+                block.style.left = this.percent(outage.start);
+                block.style.width = this.percent(outage.end - outage.start);
+                block.title = `Porta interditada: tick ${outage.start} a ${outage.end}`;
+            }
+            for (const [id, result] of entry.timeline.results) {
+                if (result.killed === null) continue;
+                const mark = div('gantt-kill', track);
+                mark.style.left = this.percent(result.killed);
+                mark.textContent = '✕';
+                mark.title = result.revived === null
+                    ? `${id} perdida no tick ${result.killed}`
+                    : `${id} destruída no tick ${result.killed} e revivida no tick ${result.revived}`;
+            }
             this.rows.set(entry.key, {name, track});
         }
 

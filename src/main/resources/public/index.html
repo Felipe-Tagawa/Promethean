@@ -6,6 +6,7 @@
     <title>Promethean — Controle de tráfego orbital</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/universe.css">
 </head>
 <body>
 
@@ -18,13 +19,17 @@
         </svg>
         <div>
             <h1>Promethean</h1>
-            <p>Escalonamento de CPU em uma estação orbital</p>
+            <p data-universe-text="Escalonamento de CPU {at}">Escalonamento de CPU em uma estação orbital</p>
         </div>
     </div>
     <nav class="tabs" aria-label="Cenas">
         <a href="index.html" aria-current="page">Escalonamento</a>
         <a href="sincronismo.html">Sincronismo</a>
     </nav>
+    <label class="field universe-field">
+        <span>Universo</span>
+        <select id="universe" title="Troca a estação, as naves e o contexto das prioridades. A simulação é a mesma."></select>
+    </label>
     <div class="source" id="source" hidden>
         <span class="source-dot" aria-hidden="true"></span>
         <span id="source-text"></span>
@@ -37,6 +42,11 @@
         <label class="field">
             <span>Algoritmo</span>
             <select id="algorithm"></select>
+        </label>
+
+        <label class="field threat-field">
+            <span>Ameaça</span>
+            <select id="threat"></select>
         </label>
 
         <div class="transport" role="group" aria-label="Reprodução">
@@ -85,6 +95,10 @@
                     <span class="hud-label">Trocas de contexto</span>
                     <span class="hud-value" id="hud-switches">0</span>
                 </div>
+                <div class="hud-item" id="hud-urgent" hidden>
+                    <span class="hud-label">Espera da mais urgente</span>
+                    <span class="hud-value" id="hud-urgent-value">—</span>
+                </div>
             </div>
         </div>
         <p class="caption" id="caption" aria-live="polite"></p>
@@ -110,6 +124,7 @@
             <span><b class="state state-READY">READY</b> em órbita</span>
             <span><b class="state state-RUNNING">RUNNING</b> atracada</span>
             <span><b class="state state-FINISHED">FINISHED</b> concluída</span>
+            <span id="legend-killed" hidden><b class="state state-KILLED">KILLED</b> perdida</span>
         </p>
 
         <h2>Eventos</h2>
@@ -131,6 +146,7 @@
                 <th scope="col" class="num" title="Média de término menos chegada">Turnaround</th>
                 <th scope="col" class="num" title="Média de primeira atracação menos chegada">Resposta</th>
                 <th scope="col" class="num" title="Trocas de contexto">Trocas</th>
+                <th scope="col" class="num" data-col="urgent" hidden></th>
             </tr>
             </thead>
             <tbody></tbody>
