@@ -172,6 +172,8 @@ public class SyncScenarioManager {
         // Barreira para que todas as naves peguem o primeiro braço juntas antes de pedir o segundo
         java.util.concurrent.CyclicBarrier barrier = new java.util.concurrent.CyclicBarrier(shipCount);
 
+        List<Thread> shipThreads = new ArrayList<>();
+
         // Dispara cada nave em sua própria Thread
         for (int i = 0; i < shipCount; i++) {
             final int index = i;
@@ -214,8 +216,15 @@ public class SyncScenarioManager {
                             emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
                         }
                     } else {
-                        // MODO NORMAL OU DETECTION: trava no lock do segundo braço
-                        locks.get(secondArm).lock();
+                        // MODO NORMAL OU DETECTION:
+                        try {
+                            locks.get(secondArm).lockInterruptibly();
+                        } catch (InterruptedException e) {
+                            // Abortada como vítima pelo monitor de deadlock!
+                            locks.get(firstArm).unlock();
+                            emit(Map.of("type", "RELEASE", "spaceCraftId", shipId, "resourceId", firstArm));
+                            return; // Encerra a thread da vítima
+                        }
                         emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
                     }
 
@@ -234,6 +243,7 @@ public class SyncScenarioManager {
                 } catch (Exception ignored) {}
             });
 
+            shipThreads.add(t);
             activeThreads.add(t);
             t.start();
         }
@@ -257,12 +267,9 @@ public class SyncScenarioManager {
                     String victim = shipIds.get(shipCount - 1);
                     emit(Map.of("type", "VICTIM_ABORTED", "spaceCraftId", victim));
 
-                    // A vítima solta o braço à força para salvar os outros
-                    String victimArm = armNames.get((shipCount - 1) % armCount);
-                    if (locks.get(victimArm).isLocked()) {
-                        locks.get(victimArm).unlock();
-                        emit(Map.of("type", "RELEASE", "spaceCraftId", victim, "resourceId", victimArm));
-                    }
+                    // Notifica a thread da vítima para abortar e soltar o braço
+                    Thread victimThread = shipThreads.get(shipCount - 1);
+                    victimThread.interrupt();
 
                     Thread.sleep(1500);
                     emit(Map.of("type", "SYNC_END", "reason", "COMPLETED"));
