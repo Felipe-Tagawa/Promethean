@@ -17,7 +17,6 @@ public class SimulationEngine {
     private List<DockingPort> ports;
     private List<SpaceCraft> all;
     private int clock;
-    private int contextSwitchCost;
     private int contextSwitches;
     private List<SimulationListener> listeners;
 
@@ -30,7 +29,6 @@ public class SimulationEngine {
         }
         this.all = new ArrayList<>(spacecrafts);
         this.clock = 0;
-        this.contextSwitchCost = 0;
         this.contextSwitches = 0;
     }
 
@@ -67,8 +65,10 @@ public class SimulationEngine {
         double avgWaiting = totalWaiting / n;
         double avgTurnaround = totalTurnaround / n;
         double avgResponse = totalResponse / n;
+        int totalTime = all.stream().
+        mapToInt(SpaceCraft::getFinishTime).max().orElse(clock);
         
-        double throughput = (clock > 0) ? (double) n / clock : 0.0;
+        double throughput = (totalTime > 0) ? (double) n / totalTime : 0.0;
         
         return new SimulationMetrics(
             scheduler.name(),
