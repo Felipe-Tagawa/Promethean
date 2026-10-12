@@ -10,7 +10,11 @@ public class SubSystemResourceManager {
     private Semaphore telemetryLinks;
 
     public SubSystemResourceManager() {
-        this.roboticArm = new Semaphore(1, true); // true garante ordem de chegada
+        this(1);
+    }
+
+    public SubSystemResourceManager(int roboticArms) {
+        this.roboticArm = new Semaphore(roboticArms, true); // true garante ordem de chegada
         this.telemetryLinks = new Semaphore(2, true);
     }
 
