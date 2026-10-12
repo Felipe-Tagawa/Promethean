@@ -47,12 +47,15 @@ flowchart TB
         PA["PriorityScheduler"]:::fase3
     end
 
-    subgraph ENGINE["simulation/ — o mecanismo"]
+    subgraph ENGINE["engine/ — o mecanismo"]
         EN["SimulationEngine<br/>clock + dispatcher"]:::fase2
         EV["SimulationEvent<br/>EventType"]:::fase2
         LI["SimulationListener<br/>interface"]:::fase2
-        CG["ConsoleGanttPrinter"]:::fase2
         SM["SimulationMetrics<br/>resultado final"]:::fase2
+    end
+
+    subgraph CLI["cli/ — interface e visualização terminal"]
+        CG["ConsoleGanttPrinter"]:::fase2
     end
 
     subgraph FUT["sync/ e server/ — concorrência e web"]
@@ -61,6 +64,10 @@ flowchart TB
         AB["AirLockBarrier"]:::fase4
         SS["SyncScenarioManager"]:::fase4
         WS["WebSocketServer"]:::fase4
+    end
+
+    subgraph EXCEPTION["exception/ — domínio e tratamento de erros"]
+        EX["Exceções Customizadas<br/>InvalidValueException<br/>InvalidProcessStateException<br/>PortOccupiedException<br/>SimulationTimeoutException"]:::existe
     end
 
     Main --> EN
@@ -494,16 +501,17 @@ classDiagram
 | `FcfsScheduler` | scheduler | FCFS | Implementado com `ArrayDeque` (FIFO) |
 | `SJFScheduler` | scheduler | SJF não-preemptivo | Implementado com menor `burstTime` e desempate por chegada |
 | `PriorityScheduler` | scheduler | Prioridade preemptiva + aging | Implementado com `List`, preempção e envelhecimento periódico |
-| `SimulationEngine` | simulation | Dispatcher + clock | Motor com admissão, despacho, execução e cálculo de métricas |
-| `SimulationEvent`, `EventType`, `SimulationListener` | simulation | Registro e Observer | Eventos de simulação e padrão Observer |
-| `ConsoleGanttPrinter` | simulation | Visualização | Linha do tempo, Diagrama de Gantt textual e métricas formatadas |
-| `SimulationMetrics` | simulation | Resultado | Record com médias de espera, resposta, retorno, vazão e trocas de contexto |
+| `SimulationEngine` | engine | Dispatcher + clock | Motor com admissão, despacho, execução e cálculo de métricas |
+| `SimulationEvent`, `EventType`, `SimulationListener` | engine | Registro e Observer | Eventos de simulação e padrão Observer |
+| `SimulationMetrics` | engine | Resultado | Record com médias de espera, resposta, retorno, vazão e trocas de contexto |
+| `ConsoleGanttPrinter` | cli | Visualização | Linha do tempo, Diagrama de Gantt textual e métricas formatadas |
 | `Workload` | model | Carga de trabalho | Carga de referência oficial e clonagem com `freshCopy()` |
 | `SharedReadyQueue` | sync | Produtor-Consumidor | Fila protegida por `ReentrantLock` e `Condition notEmpty` |
 | `SubSystemResourceManager`, `ResourceType` | sync | Semáforo contador | Gestão de recursos com `Semaphore` para braço robótico e telemetria |
 | `AirLockBarrier` | sync | Barreira cíclica | Sincronização de threads com `CyclicBarrier` |
 | `SyncScenarioManager` | sync | Concorrência viva | Execução real de threads com detecção de colisões e deadlocks |
 | `WebSocketServer` | server | Web & WebSocket | Javalin servindo front-end estático, APIs REST e canal `/ws/sync` |
+| `InvalidValueException`, `InvalidProcessStateException`, `PortOccupiedException`, `SimulationTimeoutException` | exception | Exceções de domínio | Tratamento robusto de valores inválidos, estados ilegais, portas ocupadas e timeouts |
 | `Main` | raiz | Ponto de entrada | Inicialização do servidor web, simulação comparativa e demo concorrente |
 
 ---
