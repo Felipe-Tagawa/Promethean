@@ -73,7 +73,7 @@ public class WebSocketServer implements SimulationListener {
 
         this.app.get("/api/scheduling", ctx -> {
             String algorithm = ctx.queryParam("algorithm");
-            String fileName = switch (algorithm) {
+            String fileName = switch (algorithm != null ? algorithm.toLowerCase() : "fcfs") {
                 case "sjf" -> "/public/exemplos/escalonamento-sjf.json";
                 case "priority" -> "/public/exemplos/escalonamento-priority.json";
                 default -> "/public/exemplos/escalonamento-fcfs.json";
