@@ -121,6 +121,20 @@
 
 .switch input:checked ~ .switch-state { color: var(--state-running); }
 
+/* Botão travado: a combinação contrária não existe no servidor */
+.switch.is-locked {
+    cursor: default;
+    border-style: dashed;
+}
+
+.switch.is-locked input {
+    cursor: default;
+}
+
+.switch.is-locked .switch-track {
+    opacity: .55;
+}
+
 .field[hidden] {
     display: none;
 }
