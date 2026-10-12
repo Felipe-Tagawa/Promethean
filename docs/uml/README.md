@@ -45,6 +45,7 @@ flowchart TB
         FC["FcfsScheduler"]:::fase2
         SJF["SJFScheduler"]:::fase2
         PA["PriorityScheduler"]:::fase3
+        CT["SchedulerCatalog<br/>chave → escalonador"]:::fase2
     end
 
     subgraph ENGINE["engine/ — o mecanismo"]
@@ -52,6 +53,8 @@ flowchart TB
         EV["SimulationEvent<br/>EventType"]:::fase2
         LI["SimulationListener<br/>interface"]:::fase2
         SM["SimulationMetrics<br/>resultado final"]:::fase2
+        RC["SimulationRecorder<br/>grava a simulação"]:::fase2
+        RG["SimulationRecording<br/>gravação para a tela"]:::fase2
     end
 
     subgraph CLI["cli/ — interface e visualização terminal"]
@@ -88,6 +91,12 @@ flowchart TB
     CG -.implementa.-> LI
     WS -.implementa.-> LI
     WS --> SS
+    WS --> CT
+    WS --> RC
+    CT --> SI
+    RC --> EN
+    RC --> WL
+    RC --> RG
     SS --> SR
     SS --> AB
 
@@ -233,6 +242,7 @@ classDiagram
         +SimulationEngine(Scheduler, int portCount, List~SpaceCraft~)
         +addListener(SimulationListener l) void
         +run() SimulationMetrics
+        +getPortIds() List~String~
         -admitArrivals() void
         -handleRunning() void
         -dispatchIdlePorts() void
@@ -260,6 +270,25 @@ classDiagram
         PREEMPT
         FINISH
         AGING
+    }
+
+    class SchedulerCatalog {
+        +list()$ List~Entry~
+        +create(String key)$ Scheduler
+    }
+
+    class SimulationRecorder {
+        +recordSimulation(Scheduler scheduler)$ SimulationRecording
+    }
+
+    class SimulationRecording {
+        <<record>>
+        int version
+        String algorithm
+        List~String~ ports
+        List~SpaceCraft~ spacecrafts
+        List~SimulationEvent~ events
+        SimulationMetrics metrics
     }
 
     class ConsoleGanttPrinter {
@@ -295,6 +324,12 @@ classDiagram
     SimulationEngine ..> SimulationEvent : cria
     SimulationListener <|.. ConsoleGanttPrinter
     SimulationListener ..> SimulationEvent
+    SchedulerCatalog ..> Scheduler : cria pela chave
+    SimulationRecorder ..> SimulationEngine : roda e escuta
+    SimulationRecorder ..> Workload : copia a carga
+    SimulationRecorder ..> SimulationRecording : cria
+    SimulationRecording --> "*" SimulationEvent
+    SimulationRecording --> SimulationMetrics
     SimulationEvent --> EventType
     Workload --> "*" SpaceCraft
 ```
@@ -306,6 +341,7 @@ classDiagram
 - `SimulationEngine` tem o **clock** e as **portas**. Ele não sabe qual algoritmo está rodando; só chama os métodos da interface `Scheduler`.
   - A lista `all` guarda todas as naves. É por ela que o motor chama `waitTick()` nas naves em READY, sem precisar mexer na fila do escalonador.
 - **Observer:** o motor não imprime nada. Ele emite `SimulationEvent`s e quem quiser escuta. O `ConsoleGanttPrinter` escuta os eventos para imprimir a linha do tempo e o gráfico de Gantt; o `WebSocketServer` também implementa a interface para o canal web.
+- **Gravação para a tela:** o `SimulationRecorder` roda o motor com um listener que guarda cada evento em uma lista e devolve um `SimulationRecording` (naves, portas, eventos e métricas). É o que a rota `GET /api/scheduling` envia ao front, que reproduz a simulação em replay. O `SchedulerCatalog` traduz a chave da URL (`fcfs`, `sjf`, `priority`) em um escalonador novo e é a única fonte da lista de algoritmos.
 - O próprio `SimulationEngine` calcula as métricas do README a partir das naves finalizadas:
 
 | Métrica | Fórmula |
@@ -501,9 +537,11 @@ classDiagram
 | `FcfsScheduler` | scheduler | FCFS | Implementado com `ArrayDeque` (FIFO) |
 | `SJFScheduler` | scheduler | SJF não-preemptivo | Implementado com menor `burstTime` e desempate por chegada |
 | `PriorityScheduler` | scheduler | Prioridade preemptiva + aging | Implementado com `List`, preempção e envelhecimento periódico |
+| `SchedulerCatalog` | scheduler | Escolha da política | Lista os algoritmos e cria o escalonador a partir da chave recebida pela rota |
 | `SimulationEngine` | engine | Dispatcher + clock | Motor com admissão, despacho, execução e cálculo de métricas |
 | `SimulationEvent`, `EventType`, `SimulationListener` | engine | Registro e Observer | Eventos de simulação e padrão Observer |
 | `SimulationMetrics` | engine | Resultado | Record com médias de espera, resposta, retorno, vazão e trocas de contexto |
+| `SimulationRecorder`, `SimulationRecording` | engine | Registro para replay | Roda o motor guardando os eventos e devolve a gravação que a tela reproduz |
 | `ConsoleGanttPrinter` | cli | Visualização | Linha do tempo, Diagrama de Gantt textual e métricas formatadas |
 | `Workload` | model | Carga de trabalho | Carga de referência oficial e clonagem com `freshCopy()` |
 | `SharedReadyQueue` | sync | Produtor-Consumidor | Fila protegida por `ReentrantLock` e `Condition notEmpty` |
