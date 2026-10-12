@@ -6,6 +6,7 @@ import {Player} from './player.js';
 import {Scene} from './scene.js';
 import {Gantt} from './gantt.js';
 import {renderShips, renderLog, renderMetrics} from './panels.js';
+import {bindUniverseSelect, priorityContext} from './universe.js';
 
 const PLAY_ICON = 'M7 4l13 8-13 8z';
 const PAUSE_ICON = 'M7 4h4v16H7zM13 4h4v16h-4z';
@@ -23,6 +24,8 @@ const els = {
     tickTotal: $('tick-total'),
     hudAlgorithm: $('hud-algorithm'),
     hudSwitches: $('hud-switches'),
+    hudUrgent: $('hud-urgent'),
+    hudUrgentValue: $('hud-urgent-value'),
     caption: $('caption'),
     shipsBody: document.querySelector('#ships-table tbody'),
     log: $('event-log'),
@@ -36,7 +39,10 @@ const state = {
     active: null,  // entrada mostrada na cena
 };
 
-const scene = new Scene($('scene'));
+// O universo é só aparência: trocar não mexe na simulação nem no tick atual
+let universe = bindUniverseSelect($('universe'), onUniverseChange);
+
+const scene = new Scene($('scene'), universe);
 const player = new Player(onPlayerChange);
 const gantt = new Gantt($('gantt'), {onSeek: tick => player.seek(tick), onSelect: selectAlgorithm});
 
@@ -91,8 +97,23 @@ function selectAlgorithm(key) {
     els.hudAlgorithm.textContent = entry.name;
     scene.load(entry.timeline);
     gantt.setActive(key);
-    renderMetrics(els.metricsBody, els.metricsNote, state.entries, key, selectAlgorithm);
+    renderMetrics(els.metricsBody, els.metricsNote, state.entries, key, selectAlgorithm, situationOf);
+    $('scene').dataset.algorithm = key; // a legenda da cena explica o aging só no algoritmo de prioridade
     player.load(entry.timeline.totalTicks);
+}
+
+function onUniverseChange(next) {
+    universe = next;
+    scene.setUniverse(next);
+    if (!state.active) return;
+    renderMetrics(els.metricsBody, els.metricsNote, state.entries, state.active.key, selectAlgorithm, situationOf);
+    player.emit(false); // redesenha o tick atual com as naves e os textos do novo universo
+}
+
+/** Situação que o universo atual dá à prioridade da nave; null se a gravação não traz prioridades. */
+function situationOf(shipId) {
+    const ship = state.active?.timeline.ships.find(s => s.id === shipId);
+    return ship?.priorityRank == null ? null : priorityContext(universe, ship.priorityRank).label;
 }
 
 function bindControls() {
@@ -141,8 +162,9 @@ function onPlayerChange({tick, total, playing, animate, tickMs}) {
 
     scene.render(frame, animate);
     gantt.setTick(tick, animate);
-    renderShips(els.shipsBody, timeline, frame);
-    renderLog(els.log, timeline, tick);
+    renderShips(els.shipsBody, timeline, frame, universe);
+    renderLog(els.log, timeline, tick, situationOf);
+    renderUrgent(timeline, frame);
 
     els.tick.textContent = String(tick);
     els.tickTotal.textContent = String(total);
@@ -154,9 +176,19 @@ function onPlayerChange({tick, total, playing, animate, tickMs}) {
     els.play.classList.toggle('is-playing', playing);
 }
 
+/** No canto da cena: quantos ticks a nave mais urgente já passou na órbita de espera. */
+function renderUrgent(timeline, frame) {
+    const id = timeline.urgentId;
+    els.hudUrgent.hidden = id === null;
+    if (id === null) return;
+    const now = frame.ships[id];
+    els.hudUrgentValue.textContent = `${id} · ${now.waiting} ${now.waiting === 1 ? 'tick' : 'ticks'}`;
+    els.hudUrgent.classList.toggle('is-waiting', now.state === 'READY');
+}
+
 /** Frase que resume o tick: os eventos dele ou, se não houve nenhum, quem está na porta. */
 function captionFor(frame, timeline) {
-    const parts = frame.events.map(describeEvent);
+    const parts = frame.events.map(e => describeEvent(e, situationOf));
     if (parts.length === 0) {
         for (const ship of timeline.ships) {
             const now = frame.ships[ship.id];

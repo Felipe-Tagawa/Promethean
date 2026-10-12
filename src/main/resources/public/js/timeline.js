@@ -5,7 +5,7 @@ import {PALETTE} from './palette.js';
 
 /**
  * @param recording gravação devolvida pelo servidor (ou um arquivo de exemplo)
- * @returns naves, portas, um quadro por tick, os trechos do Gantt e os tempos de cada nave
+ * @returns naves, portas, um quadro por tick, os trechos do Gantt, os tempos de cada nave e qual é a mais urgente
  */
 export function buildTimeline(recording) {
     if (!recording || !Array.isArray(recording.spacecrafts) || !Array.isArray(recording.events)) {
@@ -20,6 +20,15 @@ export function buildTimeline(recording) {
         color: PALETTE[index % PALETTE.length],
     }));
     const byId = new Map(ships.map(s => [s.id, s]));
+
+    // Nível de urgência de cada nave: 0 é o mais urgente. Vale o mesmo critério do escalonador de prioridade,
+    // em que o número menor passa na frente. Sem prioridade na gravação, o nível fica null.
+    const levels = [...new Set(ships.map(s => s.basePriority).filter(Number.isFinite))].sort((a, b) => a - b);
+    for (const ship of ships) {
+        ship.priorityRank = Number.isFinite(ship.basePriority) ? levels.indexOf(ship.basePriority) : null;
+    }
+    // A nave mais urgente só existe se as prioridades forem diferentes entre si
+    const urgentId = levels.length > 1 ? ships.find(s => s.priorityRank === 0).id : null;
 
     const events = recording.events.map(e => ({...e, tick: Number(e.tick), spaceCraftId: String(e.spaceCraftId)}));
     for (const e of events) {
@@ -122,6 +131,7 @@ export function buildTimeline(recording) {
     return {
         algorithm: String(recording.algorithm ?? ''),
         ships,
+        urgentId,
         ports,
         totalTicks,
         frames,
@@ -137,11 +147,23 @@ function remove(list, value) {
     if (index >= 0) list.splice(index, 1);
 }
 
-/** Frase em português para um evento, usada na legenda da cena e no registro. */
-export function describeEvent(e) {
+/** Ticks que a nave passou na órbita de espera ao longo de toda a simulação; null se ela não terminou. */
+export function totalWait(timeline, shipId) {
+    const ship = timeline.ships.find(s => s.id === shipId);
+    const finish = timeline.results.get(shipId)?.finish;
+    return ship && finish != null ? finish - ship.arrivalTime - ship.burstTime : null;
+}
+
+/**
+ * Frase em português para um evento, usada na legenda da cena e no registro.
+ * @param situationOf opcional: devolve a situação da nave (ex.: "Feridos a bordo"), citada na chegada
+ */
+export function describeEvent(e, situationOf = null) {
     switch (e.type) {
-        case 'ARRIVAL':
-            return `${e.spaceCraftId} chegou e entrou na órbita de espera`;
+        case 'ARRIVAL': {
+            const situation = situationOf?.(e.spaceCraftId);
+            return `${e.spaceCraftId} chegou e entrou na órbita de espera` + (situation ? ` (${situation})` : '');
+        }
         case 'DISPATCH':
             return `${e.spaceCraftId} atracou na porta ${e.portId}`;
         case 'PREEMPT':

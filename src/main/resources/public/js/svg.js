@@ -1,4 +1,5 @@
-// Peças de SVG usadas pelas duas cenas: criação de elementos, céu de fundo e o casco das naves.
+// Peças básicas de SVG usadas pelas duas cenas: criação de elementos, setas e o gerador com semente.
+// As naves ficam em hulls.js; o céu e as estações, em stations.js.
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -15,8 +16,8 @@ export function text(content, attrs, parent) {
     return node;
 }
 
-/** Gerador pseudoaleatório com semente, para o céu ser sempre o mesmo. */
-function seeded(seed) {
+/** Gerador pseudoaleatório com semente: o mesmo número de partida dá sempre o mesmo desenho. */
+export function seeded(seed) {
     let a = seed;
     return () => {
         a = (a + 0x6D2B79F5) | 0;
@@ -24,36 +25,6 @@ function seeded(seed) {
         t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
-}
-
-/** Estrelas e o planeta ao fundo, para uma área de 1000 × 500. */
-export function drawSky(root) {
-    const sky = svg('g', {class: 'sky', 'aria-hidden': 'true'}, root);
-    const random = seeded(7);
-    for (let i = 0; i < 120; i++) {
-        const star = svg('circle', {
-            cx: (random() * 1000).toFixed(1),
-            cy: (random() * 500).toFixed(1),
-            r: (0.4 + random() * 1.1).toFixed(2),
-            class: i % 9 === 0 ? 'star twinkle' : 'star',
-        }, sky);
-        star.style.opacity = (0.25 + random() * 0.6).toFixed(2);
-        star.style.animationDelay = `${(random() * 4).toFixed(1)}s`;
-    }
-    svg('circle', {cx: 955, cy: 640, r: 270, class: 'planet'}, sky);
-    svg('circle', {cx: 955, cy: 640, r: 270, class: 'planet-rim'}, sky);
-    return sky;
-}
-
-/** Casco da nave, centrado na origem e apontando para a direita. A cor vem de --ship-color. */
-export function drawHull(parent, scale) {
-    const hull = svg('g', {transform: `scale(${scale})`}, parent);
-    svg('path', {class: 'ship-fins', d: 'M-30 -11 L-41 -20 L-17 -11 Z M-30 11 L-41 20 L-17 11 Z'}, hull);
-    svg('rect', {class: 'ship-engine', x: -36, y: -7, width: 7, height: 14, rx: 2}, hull);
-    svg('path', {class: 'ship-hull', d: 'M-30 -11 H8 C24 -11 34 -4 36 0 C34 4 24 11 8 11 H-30 Z'}, hull);
-    svg('path', {class: 'ship-stripe', d: 'M-9 -11 V11'}, hull);
-    svg('circle', {class: 'ship-window', cx: 13, cy: 0, r: 4.5}, hull);
-    return hull;
 }
 
 /** Linha com ponta de seta, do ponto 1 ao ponto 2. A cor vem de currentColor. */
