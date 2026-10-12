@@ -11,15 +11,16 @@ public class SyncScenarioManager {
     private final AtomicInteger seq = new AtomicInteger(0); // contador de eventos thread-safe
     private long startTime;
     private volatile boolean running = false;
+    private volatile int runId = 0; // número da execução atual; muda sempre que um cenário termina ou é parado
     private final List<Thread> activeThreads = new ArrayList<>();
 
     public SyncScenarioManager(WebSocketServer server) {
         this.server = server;
     }
 
-    public synchronized void emit(Map<String, Object> event) {
-        if(!running && !"SYNC_END".equals(event.get("type"))) {
-            return;
+    private synchronized void emit(int run, Map<String, Object> event) {
+        if (run != runId) {
+            return; // evento de uma execução que já terminou ou foi parada
         }
         Map<String, Object> copy = new HashMap<>(event);
         copy.put("seq", seq.getAndIncrement());
@@ -29,21 +30,39 @@ public class SyncScenarioManager {
 
     public synchronized void stop() {
         if (!running) return;
-            running = false;
-            
-        // Interrompe todas as threads de naves que estiverem dormindo ou esperando recurso
-        for (Thread t : activeThreads) {
-            t.interrupt();
-        }
-        activeThreads.clear();
-        // Avisa a tela que foi parado
+
+        // Avisa a tela; é o último evento desta execução
         Map<String, Object> endEvent = new HashMap<>();
         endEvent.put("type", "SYNC_END");
         endEvent.put("reason", "STOPPED");
-        emit(endEvent);
+        emit(runId, endEvent);
+        endRun();
     }
 
-    private void startRaceScenario(boolean sync, int ships, int arms, List<String> shipIds) {
+    // Encerra a execução atual: a partir daqui nenhuma thread dela consegue emitir
+    private void endRun() {
+        running = false;
+        runId++;
+        for (Thread t : activeThreads) {
+            if (t != Thread.currentThread()) {
+                t.interrupt();
+            }
+        }
+        activeThreads.clear();
+    }
+
+    // Chamado pela thread monitora quando o cenário termina sozinho
+    private synchronized void finish(int run, Map<String, Object> endEvent) {
+        if (run != runId) return;
+        emit(run, endEvent);
+        endRun();
+    }
+
+    private boolean isCurrent(int run) {
+        return run == runId;
+    }
+
+    private void startRaceScenario(int run, boolean sync, int ships, int arms, List<String> shipIds) {
     
         Map<String, Object> startEvent = new HashMap<>();
         startEvent.put("type", "SYNC_START");
@@ -51,7 +70,7 @@ public class SyncScenarioManager {
         startEvent.put("sync", sync);
         startEvent.put("spacecrafts", shipIds);
         startEvent.put("resources", List.of(Map.of("id", "ROBOTIC_ARMS", "capacity", arms)));
-        emit(startEvent);
+        emit(run, startEvent);
 
         // Recursos compartilhados protegidos por SubSystemResourceManager
         SubSystemResourceManager resourceManager = new SubSystemResourceManager(arms);
@@ -72,7 +91,7 @@ public class SyncScenarioManager {
                     Thread.sleep(arrivalDelay); // pequeno intervalo de chegada
 
                     // A nave pede o braço
-                    emit(Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", "ROBOTIC_ARMS"));
+                    emit(run, Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", "ROBOTIC_ARMS"));
 
                     if (sync) {
                         resourceManager.acquire(ResourceType.ROBOTIC_ARM); // Bloqueio real via SubSystemResourceManager!
@@ -80,12 +99,12 @@ public class SyncScenarioManager {
 
                     // A nave pegou o braço
                     currentlyUsing.add(shipId);
-                    emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", "ROBOTIC_ARMS"));
+                    emit(run, Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", "ROBOTIC_ARMS"));
 
                     // Se não tem sincronismo e ultrapassou a capacidade -- Colide.
                     if (!sync && currentlyUsing.size() > arms) {
                         collisions.incrementAndGet();
-                        emit(Map.of(
+                        emit(run, Map.of(
                             "type", "COLLISION",
                             "resourceId", "ROBOTIC_ARMS",
                             "spaceCraftIds", new ArrayList<>(currentlyUsing)
@@ -103,12 +122,12 @@ public class SyncScenarioManager {
 
                     // Libera o braço
                     currentlyUsing.remove(shipId);
-                    emit(Map.of("type", "RELEASE", "spaceCraftId", shipId, "resourceId", "ROBOTIC_ARMS"));
+                    emit(run, Map.of("type", "RELEASE", "spaceCraftId", shipId, "resourceId", "ROBOTIC_ARMS"));
                     if (sync) {
                         resourceManager.release(ResourceType.ROBOTIC_ARM);
                     }
 
-                    emit(Map.of("type", "DONE", "spaceCraftId", shipId));
+                    emit(run, Map.of("type", "DONE", "spaceCraftId", shipId));
 
                 } catch (InterruptedException e) {
                     // Thread foi interrompida pelo stop()
@@ -126,15 +145,13 @@ public class SyncScenarioManager {
                 for (Thread t : shipThreads) {
                     t.join();
                 }
-                if (running) {
-                    Map<String, Object> endEvent = new HashMap<>();
-                    endEvent.put("type", "SYNC_END");
-                    endEvent.put("reason", "COMPLETED");
-                    endEvent.put("collisions", collisions.get());
-                    endEvent.put("cargoExpected", expectedCargo);
-                    endEvent.put("cargoActual", actualCargo.get());
-                    emit(endEvent);
-                }
+                Map<String, Object> endEvent = new HashMap<>();
+                endEvent.put("type", "SYNC_END");
+                endEvent.put("reason", "COMPLETED");
+                endEvent.put("collisions", collisions.get());
+                endEvent.put("cargoExpected", expectedCargo);
+                endEvent.put("cargoActual", actualCargo.get());
+                finish(run, endEvent);
             } catch (InterruptedException ignored) {}
         });
         activeThreads.add(monitor);
@@ -142,7 +159,7 @@ public class SyncScenarioManager {
     }
 
     // Cenário do Deadlock dentro de sincronismo
-    private void startDeadlockScenario(String recovery, int ships, int arms, List<String> shipIds) {
+    private void startDeadlockScenario(int run, String recovery, int ships, int arms, List<String> shipIds) {
         // Cria a lista de braços: ROBOTIC_ARM_A, ROBOTIC_ARM_B...
         List<String> armNames = new ArrayList<>();
         List<Map<String, Object>> resourceList = new ArrayList<>();
@@ -164,7 +181,7 @@ public class SyncScenarioManager {
         startEvent.put("recovery", recovery);
         startEvent.put("spacecrafts", shipIds);
         startEvent.put("resources", resourceList);
-        emit(startEvent);
+        emit(run, startEvent);
 
         int shipCount = shipIds.size();
         int armCount = armNames.size();
@@ -174,6 +191,8 @@ public class SyncScenarioManager {
 
         // Barreira para que apenas as naves do anel peguem o primeiro braço juntas antes de pedir o segundo
         AirLockBarrier barrier = new AirLockBarrier(ringSize);
+        // As naves fora do anel só pedem braço depois que todas as do anel pegaram o primeiro
+        java.util.concurrent.CountDownLatch ringReady = new java.util.concurrent.CountDownLatch(ringSize);
 
         List<Thread> shipThreads = new ArrayList<>();
 
@@ -186,19 +205,24 @@ public class SyncScenarioManager {
 
             Thread t = new Thread(() -> {
                 try {
+                    if (index >= ringSize) {
+                        ringReady.await(); // nave extra: espera o anel se formar para não tomar o braço de uma nave dele
+                    }
+
                     // Pede e adquire o primeiro braço
-                    emit(Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", firstArm));
+                    emit(run, Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", firstArm));
                     locks.get(firstArm).lock();
-                    emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", firstArm));
+                    emit(run, Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", firstArm));
 
                     // Aguarda apenas as naves do anel pegarem o primeiro braço juntas
                     if (index < ringSize) {
+                        ringReady.countDown();
                         barrier.awaitEqualization();
                         Thread.sleep(300);
                     }
 
                     // Pede o segundo braço (onde o impasse acontece para as naves do anel)
-                    emit(Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", secondArm));
+                    emit(run, Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", secondArm));
 
                     if ("timeout".equals(recovery)) {
                         // MODO TIMEOUT: tenta por tempo limitado (a maior nave do anel desiste primeiro)
@@ -207,42 +231,45 @@ public class SyncScenarioManager {
 
                         if (!acquired) {
                             // Desiste, solta o primeiro braço e recua
-                            emit(Map.of("type", "TIMEOUT", "spaceCraftId", shipId, "resourceId", secondArm));
+                            emit(run, Map.of("type", "TIMEOUT", "spaceCraftId", shipId, "resourceId", secondArm));
                             locks.get(firstArm).unlock();
-                            emit(Map.of("type", "RELEASE", "spaceCraftId", shipId, "resourceId", firstArm));
+                            emit(run, Map.of("type", "RELEASE", "spaceCraftId", shipId, "resourceId", firstArm));
 
                             // Espera o colega terminar e tenta de novo do zero
                             Thread.sleep(1200);
-                            emit(Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", firstArm));
+                            emit(run, Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", firstArm));
                             locks.get(firstArm).lock();
-                            emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", firstArm));
+                            emit(run, Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", firstArm));
 
-                            emit(Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", secondArm));
+                            emit(run, Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", secondArm));
                             locks.get(secondArm).lock();
-                            emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
+                            emit(run, Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
                         } else {
-                            emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
+                            emit(run, Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
                         }
                     } else {
                         // MODO NORMAL OU DETECTION:
                         try {
                             locks.get(secondArm).lockInterruptibly();
-                            emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
+                            emit(run, Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
                         } catch (InterruptedException e) {
-                            // Abortada como vítima pelo monitor de deadlock!
-                            // Solta o primeiro braço e recua
+                            // Solta o primeiro braço
                             locks.get(firstArm).unlock();
-                            emit(Map.of("type", "RELEASE", "spaceCraftId", shipId, "resourceId", firstArm));
+                            if (!isCurrent(run)) {
+                                return; // interrompida porque o cenário acabou, não como vítima
+                            }
+                            // Abortada como vítima pelo monitor de deadlock: recua
+                            emit(run, Map.of("type", "RELEASE", "spaceCraftId", shipId, "resourceId", firstArm));
 
                             // Espera o colega terminar e tenta de novo do zero (Rollback & Retry)
                             Thread.sleep(1200);
-                            emit(Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", firstArm));
+                            emit(run, Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", firstArm));
                             locks.get(firstArm).lock();
-                            emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", firstArm));
+                            emit(run, Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", firstArm));
 
-                            emit(Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", secondArm));
+                            emit(run, Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", secondArm));
                             locks.get(secondArm).lock();
-                            emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
+                            emit(run, Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
                         }
                     }
 
@@ -251,12 +278,12 @@ public class SyncScenarioManager {
 
                     // Libera ambos os braços
                     locks.get(secondArm).unlock();
-                    emit(Map.of("type", "RELEASE", "spaceCraftId", shipId, "resourceId", secondArm));
+                    emit(run, Map.of("type", "RELEASE", "spaceCraftId", shipId, "resourceId", secondArm));
 
                     locks.get(firstArm).unlock();
-                    emit(Map.of("type", "RELEASE", "spaceCraftId", shipId, "resourceId", firstArm));
+                    emit(run, Map.of("type", "RELEASE", "spaceCraftId", shipId, "resourceId", firstArm));
 
-                    emit(Map.of("type", "DONE", "spaceCraftId", shipId));
+                    emit(run, Map.of("type", "DONE", "spaceCraftId", shipId));
 
                 } catch (Exception ignored) {}
             });
@@ -274,7 +301,7 @@ public class SyncScenarioManager {
                     for (Thread t : shipThreads) {
                         t.join();
                     }
-                    emit(Map.of("type", "SYNC_END", "reason", "COMPLETED"));
+                    finish(run, Map.of("type", "SYNC_END", "reason", "COMPLETED"));
                     return;
                 }
 
@@ -282,18 +309,18 @@ public class SyncScenarioManager {
 
                 if ("none".equals(recovery)) {
                     // Modo deixar travar: detecta o ciclo, acende a luz vermelha e para travado
-                    emit(Map.of("type", "DEADLOCK_DETECTED", "spaceCraftIds", cycleShips));
+                    emit(run, Map.of("type", "DEADLOCK_DETECTED", "spaceCraftIds", cycleShips));
                     Thread.sleep(800);
-                    emit(Map.of("type", "SYNC_END", "reason", "DEADLOCKED"));
+                    finish(run, Map.of("type", "SYNC_END", "reason", "DEADLOCKED"));
 
                 } else if ("detection".equals(recovery)) {
                     // Modo detecção: acende o ciclo e aborta a maior nave DENTRO do ciclo
-                    emit(Map.of("type", "DEADLOCK_DETECTED", "spaceCraftIds", cycleShips));
+                    emit(run, Map.of("type", "DEADLOCK_DETECTED", "spaceCraftIds", cycleShips));
                     Thread.sleep(800);
 
                     int victimIndex = ringSize - 1;
                     String victim = shipIds.get(victimIndex);
-                    emit(Map.of("type", "VICTIM_ABORTED", "spaceCraftId", victim));
+                    emit(run, Map.of("type", "VICTIM_ABORTED", "spaceCraftId", victim));
 
                     // Notifica a thread da vítima para abortar e soltar o braço
                     Thread victimThread = shipThreads.get(victimIndex);
@@ -303,13 +330,13 @@ public class SyncScenarioManager {
                     for (Thread t : shipThreads) {
                         t.join();
                     }
-                    emit(Map.of("type", "SYNC_END", "reason", "COMPLETED"));
+                    finish(run, Map.of("type", "SYNC_END", "reason", "COMPLETED"));
 
                 } else if ("timeout".equals(recovery)) {
                     for (Thread t : shipThreads) {
                         t.join();
                     }
-                    emit(Map.of("type", "SYNC_END", "reason", "COMPLETED"));
+                    finish(run, Map.of("type", "SYNC_END", "reason", "COMPLETED"));
                 }
 
             } catch (InterruptedException ignored) {}
@@ -322,6 +349,7 @@ public class SyncScenarioManager {
     public synchronized void start(String scenario, boolean sync, String recovery, int ships, int arms) {
     stop(); // para qualquer cenário antigo
     this.running = true;
+    final int run = this.runId;
     this.seq.set(0);
     this.startTime = System.currentTimeMillis();
 
@@ -332,9 +360,9 @@ public class SyncScenarioManager {
     }
 
     if ("race".equals(scenario)) {
-        startRaceScenario(sync, ships, arms, shipIds);
+        startRaceScenario(run, sync, ships, arms, shipIds);
     } else if ("deadlock".equals(scenario)) {
-        startDeadlockScenario(recovery, ships, arms, shipIds);
+        startDeadlockScenario(run, recovery, ships, arms, shipIds);
     }
 }
 }
