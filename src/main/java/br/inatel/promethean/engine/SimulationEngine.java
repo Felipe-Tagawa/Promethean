@@ -1,5 +1,6 @@
-package br.inatel.promethean.simulation;
+package br.inatel.promethean.engine;
 
+import br.inatel.promethean.exception.SimulationTimeoutException;
 import br.inatel.promethean.model.DockingPort;
 import br.inatel.promethean.model.ProcessState;
 import br.inatel.promethean.model.SpaceCraft;
@@ -40,7 +41,7 @@ public class SimulationEngine {
         while (!isAllFinished(all)){
             // Um erro de escalonador (nave que nunca termina) vira exceção em vez de travar o programa
             if (clock > MAX_TICKS) {
-                throw new IllegalStateException("Simulation passed " + MAX_TICKS + " ticks with scheduler '"
+                throw new SimulationTimeoutException("Simulation passed " + MAX_TICKS + " ticks with scheduler '"
                         + scheduler.name() + "': some spacecraft never finishes.");
             }
 

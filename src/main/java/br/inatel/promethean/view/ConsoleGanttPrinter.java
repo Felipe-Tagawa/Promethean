@@ -1,4 +1,9 @@
-package br.inatel.promethean.simulation;
+package br.inatel.promethean.view;
+
+import br.inatel.promethean.engine.EventType;
+import br.inatel.promethean.engine.SimulationEvent;
+import br.inatel.promethean.engine.SimulationListener;
+import br.inatel.promethean.engine.SimulationMetrics;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,3 +43,4 @@ public class ConsoleGanttPrinter implements SimulationListener {
         events.clear();
     }
 }
+

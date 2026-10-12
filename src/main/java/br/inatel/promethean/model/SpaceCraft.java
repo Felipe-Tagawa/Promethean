@@ -1,6 +1,7 @@
 package br.inatel.promethean.model;
 
-import br.inatel.promethean.exceptions.InvalidValueException;
+import br.inatel.promethean.exception.InvalidProcessStateException;
+import br.inatel.promethean.exception.InvalidValueException;
 
 public class SpaceCraft {
     /**
@@ -26,6 +27,19 @@ public class SpaceCraft {
     private ProcessState state;
 
     public SpaceCraft(String id, int arrivalTime, int burstTime, int basePriority) {
+        if (id == null || id.isBlank()) {
+            throw new InvalidValueException("SpaceCraft ID cannot be null or blank.");
+        }
+        if (burstTime <= 0) {
+            throw new InvalidValueException("Burst time must be positive for " + id + ": " + burstTime);
+        }
+        if (arrivalTime < 0) {
+            throw new InvalidValueException("Arrival time cannot be negative for " + id + ": " + arrivalTime);
+        }
+        if (basePriority < 0) {
+            throw new InvalidValueException("Base priority cannot be negative for " + id + ": " + basePriority);
+        }
+
         this.id = id;
         this.arrivalTime = arrivalTime;
         this.burstTime = burstTime;
@@ -38,10 +52,14 @@ public class SpaceCraft {
     /**
      * Executa um tick quando o processo está em running (decrementa o tempo restante)
      */
-    public void executeTick() throws InvalidValueException {
-        if(state != ProcessState.RUNNING){throw new InvalidValueException("SpaceCraft is not running.");}
-        else if(remainingTime > 0){remainingTime--;}
-        else{throw new InvalidValueException("remaining time cannot be less than zero.");}
+    public void executeTick() {
+        if (state != ProcessState.RUNNING) {
+            throw new InvalidProcessStateException("SpaceCraft " + id + " is not running (state=" + state + ").");
+        }
+        if (remainingTime <= 0) {
+            throw new InvalidValueException("Remaining time cannot be less than zero for " + id + ".");
+        }
+        remainingTime--;
     }
 
     /**
