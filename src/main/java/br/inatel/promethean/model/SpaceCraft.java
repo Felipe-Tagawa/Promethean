@@ -2,8 +2,6 @@ package br.inatel.promethean.model;
 
 import br.inatel.promethean.exceptions.InvalidValueException;
 
-import javax.management.InvalidAttributeValueException;
-
 public class SpaceCraft {
     /**
      * Id: Id do processo
@@ -16,7 +14,7 @@ public class SpaceCraft {
      * waitingTime: tempo acumulado do processo em ready
      * startTime: primeira vez que ganhou uma cpu
      * finishTime: momento em que o processo terminou
-     * timeInCurrentStates: há quanto tempo está no estado atual
+     * timeInCurrentState: há quanto tempo está no estado atual
      */
 
     private final String id;
