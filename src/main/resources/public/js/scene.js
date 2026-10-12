@@ -35,6 +35,8 @@ export class Scene {
         this.shipLayer = svg('g', {class: 'ships'}, this.root);
         // Por cima de tudo: o véu da tempestade, enquanto as portas estão interditadas, e os efeitos passageiros
         svg('rect', {class: 'storm', width: 1000, height: 500, 'aria-hidden': 'true'}, this.root);
+        // A Pirâmide da Frota Negra, que paira sobre a estação enquanto a interdição dela durar
+        svg('path', {class: 'pyramid', d: 'M530 12 H690 L610 160 Z M610 12 V160', 'aria-hidden': 'true'}, this.root);
         this.fxLayer = svg('g', {class: 'fx-layer', 'aria-hidden': 'true'}, this.root);
         this.buildBackdrop();
     }
@@ -78,7 +80,7 @@ export class Scene {
         // Com uma ameaça ativa, a cor dela tinge o véu e as marcas de porta interditada
         const visual = timeline.threat?.visual ?? null;
         this.root.style.setProperty('--threat-color', visual?.color ?? 'transparent');
-        this.root.dataset.outage = visual?.kind === 'storm' ? 'storm' : 'lockdown';
+        this.root.dataset.outage = ['storm', 'pyramid'].includes(visual?.kind) ? visual.kind : 'lockdown';
 
         timeline.ports.forEach((id, index) => this.ports.set(id, this.buildPort(id, index, timeline.ports.length)));
         timeline.ships.forEach(ship => this.ships.set(ship.id, this.buildShip(ship)));

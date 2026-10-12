@@ -127,6 +127,7 @@ export function simulate({algorithm, name, spacecrafts, ports: portIds, threat =
     const ports = portIds.map(id => ({id: String(id), current: null, downUntil: 0}));
     const events = [];
     const pending = (threat?.actions ?? []).map(action => ({...action, struck: new Set()}));
+    let revivals = []; // naves destruídas que vão voltar: {ship, tick, text}
     let clock = 0;
     let contextSwitches = 0;
 
@@ -235,6 +236,9 @@ export function simulate({algorithm, name, spacecrafts, ports: portIds, threat =
                 }
                 setState(ship, 'KILLED');
                 event.effects.push({kind: 'destroy', style: effect.style ?? 'explode'});
+                if (effect.revive) {
+                    revivals.push({ship, tick: clock + effect.revive, text: action.reviveText ?? '{nave} voltou à órbita'});
+                }
             }
         }
         event.text = action.text.replace('{nave}', ship.id);
@@ -262,6 +266,20 @@ export function simulate({algorithm, name, spacecrafts, ports: portIds, threat =
             }
         }
 
+        // Reviver: a nave volta para o fim da fila como se chegasse agora, sem nada do que já tinha executado
+        for (const revival of revivals.filter(r => r.tick === clock)) {
+            const ship = revival.ship;
+            ship.remaining = ship.burstTime;
+            ship.currentPriority = ship.basePriority;
+            setState(ship, 'READY');
+            scheduler.add(ship);
+            events.push({
+                tick: clock, type: 'THREAT', spaceCraftId: ship.id, portId: null,
+                effects: [{kind: 'revive'}], text: revival.text.replace('{nave}', ship.id),
+            });
+        }
+        revivals = revivals.filter(r => r.tick > clock);
+
         for (const action of pending) {
             if (action.done || clock < action.tick) continue;
             const repeats = Boolean(action.every);
@@ -286,7 +304,7 @@ export function simulate({algorithm, name, spacecrafts, ports: portIds, threat =
 
     // ---------- laço principal: a mesma ordem do servidor, com as ameaças logo depois das chegadas ----------
 
-    while (ships.some(s => s.state !== 'FINISHED' && s.state !== 'KILLED')) {
+    while (ships.some(s => s.state !== 'FINISHED' && s.state !== 'KILLED') || revivals.length > 0) {
         if (clock > MAX_TICKS) {
             throw new Error(`A simulação passou de ${MAX_TICKS} ticks: alguma nave nunca termina.`);
         }

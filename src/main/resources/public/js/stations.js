@@ -66,6 +66,31 @@ const SKIES = {
         });
         circle(sky, 'planet-rim', giant.x, giant.y, giant.r);
     },
+
+    /** O Viajante no alto e, na base, as montanhas com as luzes da Última Cidade. */
+    destiny(sky) {
+        const traveler = {x: 800, y: 58, r: 132};
+        const body = svg('g', {class: 'traveler-body'}, sky);
+        circle(body, 'traveler-glow', traveler.x, traveler.y, traveler.r + 16);
+        circle(body, 'traveler', traveler.x, traveler.y, traveler.r);
+        // A parte de baixo é mais escura e rachada: foi onde o Viajante se partiu
+        const surface = clipped(body, 'sky-traveler', traveler.x, traveler.y, traveler.r);
+        circle(surface, 'traveler-shade', traveler.x + 34, traveler.y + 46, traveler.r);
+        circle(surface, 'traveler-shade', traveler.x + 66, traveler.y + 92, traveler.r);
+        path(surface, 'traveler-crack', 'M716 122 L742 140 L736 163 L752 178 M778 152 L792 173 L816 169 L826 186 '
+            + 'M842 118 L853 147 L876 152 M700 80 L722 96');
+        for (const [x, y, size] of [[752, 196, 7], [790, 205, 9], [826, 199, 6], [860, 187, 5]]) {
+            polygon(body, 'traveler-shard', [[x - size, y - size], [x + size, y - size * 0.6], [x + size * 0.2, y + size * 1.4]]);
+        }
+
+        path(sky, 'city-ridge', 'M0 500 V470 L60 452 L110 468 L170 446 L240 472 L300 458 L380 478 L460 462 L540 480 '
+            + 'L640 466 L720 482 L820 470 L900 484 L1000 468 V500 Z');
+        const random = seeded(31);
+        for (let i = 0; i < 46; i++) {
+            // Sem luzes no canto esquerdo, onde fica a legenda da cena
+            rect(sky, 'city-light', 370 + random() * 620, 484 + random() * 13, 2.4, 1.6);
+        }
+    },
 };
 
 /** Estrelas e os astros do universo. As estrelas vêm de uma semente fixa, para o céu ser sempre o mesmo. */
@@ -249,6 +274,29 @@ const STATIONS = {
             rect(g, 'hub-core', x - 24, y - 17, 48, 34, 4);
             circle(g, 'hub-light', x, y, 7);
         },
+    },
+};
+
+/** A Torre da Última Cidade: a torre central, o bloco do hangar e os estandartes da Vanguarda. */
+STATIONS.destiny = {
+    armStart: 40,
+    body(g, x, y) {
+        line(g, 'tw-mast', x, y - 128, x, y - 158);
+        line(g, 'tw-mast', x + 7, y - 116, x + 7, y - 140);
+        path(g, 'tw-tower', `M${x - 16} ${y + 150} L${x - 12} ${y - 96} L${x - 5} ${y - 128} H${x + 5} L${x + 12} ${y - 96} L${x + 16} ${y + 150} Z`);
+        for (let dy = -86; dy <= 138; dy += 16) {
+            if (Math.abs(dy) > 34) rect(g, 'tw-light', x - 2, y + dy, 4, 7);
+        }
+        path(g, 'tw-deck', `M${x - 34} ${y + 32} H${x + 120} L${x + 134} ${y + 44} H${x - 34} Z`);
+        rect(g, 'tw-wing', x + 16, y - 20, 96, 40, 4);
+        line(g, 'tw-mast', x + 100, y - 20, x + 122, y - 30);
+        circle(g, 'tw-dish', x + 126, y - 32, 7);
+        [30, 52, 74].forEach((dx, index) => rect(g, index === 1 ? 'tw-banner alt' : 'tw-banner', x + dx, y + 44, 8, 22));
+    },
+    hub(g, x, y) {
+        rect(g, 'hub', x - 40, y - 30, 80, 60, 10);
+        rect(g, 'hub-core', x - 26, y - 18, 52, 36, 6);
+        circle(g, 'hub-light', x, y, 7);
     },
 };
 

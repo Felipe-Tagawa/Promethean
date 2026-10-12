@@ -12,6 +12,8 @@
 //            {kind: 'priority'}          a nave passa na frente de todas (mudança de prioridade em execução)
 //            {kind: 'burst', amount}     a nave precisa de mais tempo de porta (o processo pede mais CPU)
 //            {kind: 'destroy', style}    a nave sai sem terminar (processo encerrado à força)
+//            {kind: 'destroy', revive}   idem, mas a nave volta à órbita depois de `revive` ticks e recomeça do zero
+//                                        (processo reiniciado por um supervisor); a frase da volta fica em reviveText
 //            {kind: 'port', ticks}       a porta fica interditada (núcleo de CPU fora de serviço)
 //   text     frase do registro de eventos; {nave} e {porta} são trocados pelos nomes
 //
@@ -196,6 +198,50 @@ const THREATS = {
             actions: [{
                 tick: 4, effects: [{kind: 'port', ticks: 4}],
                 text: 'Quarentena: a porta {porta} fica interditada por 4 ticks',
+            }],
+        },
+    ],
+
+    destiny: [
+        {
+            key: 'emboscada-cabal',
+            name: 'Emboscada Cabal',
+            summary: 'Um Debulhador destrói a nave do Guardião; o Fantasma a revive 4 ticks depois e ela recomeça do zero.',
+            visual: {kind: 'flyby', hull: 'thresher', color: '#ff8a4a'},
+            actions: [{
+                tick: 3, target: {rank: 0}, effects: [{kind: 'destroy', revive: 4}],
+                text: 'Um Debulhador Cabal destruiu {nave}',
+                reviveText: 'O Fantasma reviveu {nave}: ela volta à órbita e recomeça do zero',
+            }],
+        },
+        {
+            key: 'frota-negra',
+            name: 'Chegada da Frota Negra',
+            summary: 'Uma Pirâmide encobre a Torre e a porta fica interditada por 4 ticks.',
+            visual: {kind: 'pyramid', color: '#9aa0b8'},
+            actions: [{
+                tick: 5, effects: [{kind: 'port', ticks: 4}],
+                text: 'Uma Pirâmide encobriu a Torre: a porta {porta} fica interditada por 4 ticks',
+            }],
+        },
+        {
+            key: 'laco-vex',
+            name: 'Laço temporal Vex',
+            summary: 'A nave atracada fica presa em um laço temporal e precisa de mais 4 ticks.',
+            visual: {kind: 'alarm', color: '#ffb454'},
+            actions: [{
+                tick: 6, target: 'running', effects: [{kind: 'burst', amount: 4}],
+                text: '{nave} ficou presa em um laço temporal Vex e precisa de mais 4 ticks',
+            }],
+        },
+        {
+            key: 'possuida',
+            name: 'Possuída por Oryx',
+            summary: 'A nave menos urgente é levada pelos Possuídos e não volta.',
+            visual: {kind: 'alarm', color: '#d5dcff'},
+            actions: [{
+                tick: 7, target: 'leastUrgent', effects: [{kind: 'destroy', style: 'taken'}],
+                text: '{nave} foi possuída por Oryx e deixou a órbita',
             }],
         },
     ],

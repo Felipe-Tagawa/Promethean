@@ -275,6 +275,41 @@ svg.icon {
     pointer-events: none;
 }
 
+/* ---------- Destiny ---------- */
+
+:root[data-universe="destiny"] {
+    --bg: #060a12;
+    --panel: #0d1422;
+    --panel-2: #141d30;
+    --line: #27344f;
+    --accent: #a8e4ff;
+    --scene-bg: #050912;
+    --glow: #a8e4ff;
+    --hull-base: #c9ced8;
+    --hull-tint: 40%;
+}
+
+.traveler { fill: #dfe5ee; }
+/* No sincronismo os braços e os rótulos passam na frente do Viajante: ele fica mais apagado */
+#sync-scene .traveler-body { opacity: .4; }
+.traveler-glow { fill: #a8e4ff; opacity: .07; }
+.traveler-shade { fill: #1a2233; opacity: .2; }
+.traveler-crack { fill: none; stroke: #6b7689; stroke-width: 1.4; stroke-linejoin: round; opacity: .85; }
+.traveler-shard { fill: #c3cad6; stroke: #6b7689; stroke-width: 1; stroke-linejoin: round; }
+.city-ridge { fill: #0a111e; stroke: #1c2942; stroke-width: 1.5; stroke-linejoin: round; }
+.city-light { fill: #ffd98a; opacity: .7; }
+
+.tw-tower { fill: #1c2536; stroke: #7f8da8; stroke-width: 1.5; stroke-linejoin: round; }
+.tw-wing, .tw-deck { fill: #161e2e; stroke: #7f8da8; stroke-width: 1.3; stroke-linejoin: round; }
+.tw-mast { stroke: #7f8da8; stroke-width: 1.5; stroke-linecap: round; }
+.tw-light { fill: #a8e4ff; opacity: .75; }
+.tw-banner { fill: #e0862f; stroke: #050912; stroke-width: 1; }
+.tw-banner.alt { fill: #f2c14e; }
+.tw-dish { fill: #161e2e; stroke: #7f8da8; stroke-width: 1.5; }
+
+:root[data-universe="destiny"] .hub { fill: #1c2536; stroke: #9aa8c2; }
+:root[data-universe="destiny"] .hub-core { fill: #0b111d; stroke: #5b6984; }
+
 /* ---------- ameaças ---------- */
 
 #threat {
@@ -302,6 +337,11 @@ svg.icon {
 /* Véu que cobre a cena enquanto as portas estão interditadas por uma tempestade */
 .storm { fill: var(--threat-color, transparent); opacity: 0; pointer-events: none; transition: opacity .5s; }
 #scene[data-ports-down="true"][data-outage="storm"] .storm { animation: storm 1.6s ease-in-out infinite; }
+
+/* A Pirâmide escurece a cena em vez de clareá-la */
+.pyramid { fill: #04050a; stroke: #4a5066; stroke-width: 1.5; stroke-linejoin: round; opacity: 0; pointer-events: none; transition: opacity .6s; }
+#scene[data-ports-down="true"][data-outage="pyramid"] .pyramid { opacity: .96; }
+#scene[data-ports-down="true"][data-outage="pyramid"] .storm { fill: #000; opacity: .32; }
 
 .port-lock { stroke: var(--danger); stroke-width: 4; stroke-linecap: round; opacity: 0; transition: opacity .3s; }
 .port-closed { fill: var(--danger); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: 0; transition: opacity .3s;

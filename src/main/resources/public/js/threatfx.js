@@ -186,6 +186,13 @@ export function playThreat({layer, event, visual, target, source, station, durat
             rings(layer, target, '#6ee7a0', 0, duration * .8, .8);
             return;
         }
+        if (effect.kind === 'revive') {
+            // A nave reaparece na órbita em um clarão de Luz
+            flash(layer, target, '#a8e4ff', 0, duration);
+            rings(layer, target, '#a8e4ff', 0, duration);
+            floatText(layer, target, 'revivida pelo Fantasma', '#a8e4ff', 0, duration);
+            return;
+        }
     }
 
     const arrive = ARRIVALS[visual.kind] ?? ARRIVALS.alarm;
@@ -193,7 +200,9 @@ export function playThreat({layer, event, visual, target, source, station, durat
 
     for (const effect of event.effects) {
         if (effect.kind === 'destroy') {
-            if (effect.style !== 'abort') explosion(layer, target, impact, duration);
+            // Só explode quem é destruída: quem aborta a missão ou é levada some sem explosão
+            if (effect.style === 'explode') explosion(layer, target, impact, duration);
+            else if (effect.style === 'taken') rings(layer, target, visual.color, impact, duration, 1.2);
         } else {
             flash(layer, target, visual.color, impact, duration * .6);
             if (effect.kind === 'burst') floatText(layer, target, `+${effect.amount} de burst`, '#ffd866', impact, duration);

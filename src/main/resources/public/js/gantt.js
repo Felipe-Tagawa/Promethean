@@ -64,7 +64,9 @@ export class Gantt {
                 const mark = div('gantt-kill', track);
                 mark.style.left = this.percent(result.killed);
                 mark.textContent = '✕';
-                mark.title = `${id} perdida no tick ${result.killed}`;
+                mark.title = result.revived === null
+                    ? `${id} perdida no tick ${result.killed}`
+                    : `${id} destruída no tick ${result.killed} e revivida no tick ${result.revived}`;
             }
             this.rows.set(entry.key, {name, track});
         }

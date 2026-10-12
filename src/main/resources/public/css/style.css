@@ -407,8 +407,9 @@ select {
 .ship-engine { fill: #2a3558; stroke: #050817; stroke-width: 1.5; }
 .ship-stripe { stroke: #050817; stroke-width: 2; opacity: .45; }
 .ship-window { fill: #050817; stroke: #e8edff; stroke-width: 1.5; }
-.ship-id { fill: var(--text); font-size: 16px; font-weight: 700; }
-.ship-rest { fill: var(--muted); font-size: 12px; }
+/* O contorno escuro mantém os rótulos legíveis quando há algo claro atrás (o Viajante, a Estrela da Morte) */
+.ship-id { fill: var(--text); font-size: 16px; font-weight: 700; paint-order: stroke; stroke: var(--scene-bg); stroke-width: 3px; stroke-linejoin: round; }
+.ship-rest { fill: var(--muted); font-size: 12px; paint-order: stroke; stroke: var(--scene-bg); stroke-width: 3px; stroke-linejoin: round; }
 .gauge-track { fill: #26315a; }
 .gauge-fill { fill: var(--ship-color); transition: width var(--tick-ms) linear; }
 

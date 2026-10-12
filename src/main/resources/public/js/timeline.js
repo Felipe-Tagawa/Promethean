@@ -53,13 +53,14 @@ export function buildTimeline(recording) {
     // Estado que vai sendo alterado tick a tick
     // Mudam só com ameaça: burst pode crescer, struck marca a nave atingida e boosted a que passou na frente de todas
     const live = new Map(ships.map(s => [s.id, {
-        state: 'NEW', portId: null, executed: 0, waiting: 0, burst: s.burstTime, struck: false, boosted: false, exit: null,
+        state: 'NEW', portId: null, executed: 0, waiting: 0, burst: s.burstTime,
+        struck: false, boosted: false, exit: null, revived: false,
     }]));
     const readyOrder = []; // ordem em que as naves entraram em READY
     const open = new Map(); // nave -> trecho do Gantt ainda aberto
     const segments = [];
     const outages = []; // intervalos em que as portas ficaram interditadas
-    const results = new Map(ships.map(s => [s.id, {start: null, finish: null, killed: null}]));
+    const results = new Map(ships.map(s => [s.id, {start: null, finish: null, killed: null, revived: null}]));
     const frames = [];
     let preemptions = 0;
     let portsDown = false;
@@ -125,6 +126,14 @@ export function buildTimeline(recording) {
                             remove(readyOrder, e.spaceCraftId);
                             closeSegment(e.spaceCraftId, e.tick);
                             results.get(e.spaceCraftId).killed = e.tick;
+                        } else if (effect.kind === 'revive') {
+                            // Volta para o fim da órbita e recomeça do zero
+                            ship.state = 'READY';
+                            ship.executed = 0;
+                            ship.exit = null;
+                            ship.revived = true;
+                            readyOrder.push(e.spaceCraftId);
+                            results.get(e.spaceCraftId).revived = e.tick;
                         } else if (effect.kind === 'port-down') {
                             portsDown = true;
                             outages.push({start: e.tick, end: null});
@@ -152,6 +161,7 @@ export function buildTimeline(recording) {
                 slot: readyOrder.indexOf(s.id),
                 struck: ship.struck,
                 boosted: ship.boosted,
+                revived: ship.revived,
                 exit: ship.exit,
             };
         }
@@ -190,11 +200,14 @@ function remove(list, value) {
     if (index >= 0) list.splice(index, 1);
 }
 
-/** Ticks que a nave passou na órbita de espera ao longo de toda a simulação; null se ela não terminou. */
+/**
+ * Ticks que a nave passou na órbita de espera ao longo de toda a simulação; null se ela não terminou.
+ * Vem do contador do último quadro, e não de término − chegada − burst: com ameaças, a nave também
+ * passa tempo parada na porta interditada ou destruída, e isso não é espera na órbita.
+ */
 export function totalWait(timeline, shipId) {
-    const ship = timeline.ships.find(s => s.id === shipId);
-    const finish = timeline.results.get(shipId)?.finish;
-    return ship && finish != null ? finish - ship.arrivalTime - ship.burstTime : null;
+    const last = timeline.frames[timeline.frames.length - 1]?.ships[shipId];
+    return last?.state === 'FINISHED' ? last.waiting : null;
 }
 
 /**

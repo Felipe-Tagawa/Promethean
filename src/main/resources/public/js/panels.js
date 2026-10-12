@@ -29,7 +29,7 @@ function contextTag(ship, now, timeline, universe) {
     if (now.state === 'KILLED') {
         const tick = timeline.results.get(ship.id).killed;
         icon = 'alert';
-        title = now.exit === 'abort' ? 'Abandonou a órbita' : 'Destruída';
+        title = now.exit === 'explode' ? 'Destruída' : 'Deixou a órbita';
         detail = `tick ${tick} · ${threat}`;
         rank = 0;
     } else if (now.boosted) {
@@ -37,6 +37,11 @@ function contextTag(ship, now, timeline, universe) {
         title = 'Prioridade máxima';
         detail = threat;
         rank = 0;
+    } else if (now.revived) {
+        icon = 'alert';
+        title = 'Revivida';
+        detail = `tick ${timeline.results.get(ship.id).revived} · recomeçou do zero`;
+        rank = Math.min(ship.priorityRank, 3);
     } else {
         const context = priorityContext(universe, ship.priorityRank);
         icon = context.icon;

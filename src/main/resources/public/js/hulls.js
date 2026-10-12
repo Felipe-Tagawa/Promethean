@@ -233,6 +233,59 @@ const HULLS = {
             + 'M-12 19.5 L-9 12.5 M2 20 L3 14.5 M14 19.5 L14 15.5 M-24 15.5 L-18 9.5');
         circle(hull, 'ship-dark', -30, 0, 2.6);
     },
+
+    // ---------- Destiny ----------
+
+    /** Nave de salto do Guardião: fuselagem fina, asas curtas e dois motores atrás. */
+    jumpship(hull) {
+        mirrored(hull, g => {
+            circle(g, 'ship-glow', -39.5, -10, 2.1);
+            rect(g, 'ship-engine', -38, -13.5, 20, 7, 3);
+            path(g, 'ship-fins', 'M-6 -4 L-20 -5 L-30 -18 L-21 -18 Z');
+            path(g, 'ship-fins', 'M19 -4.4 L10 -9.5 L8 -5.2 Z');
+        });
+        path(hull, 'ship-hull', 'M37 0 C28 -4.5 14 -6 -2 -6 L-26 -4.5 L-31 0 L-26 4.5 L-2 6 C14 6 28 4.5 37 0 Z');
+        path(hull, 'ship-stripe', 'M-10 -5.8 V5.8');
+        ellipse(hull, 'ship-window', 12, 0, 7, 2.6);
+    },
+
+    /** Esquife dos Decaídos: casco chato com a proa partida e duas lâminas compridas. */
+    skiff(hull) {
+        mirrored(hull, g => {
+            circle(g, 'ship-glow', -38, -6.5, 2);
+            path(g, 'ship-fins', 'M10 -7 L-8 -19.5 L-30 -19.5 L-18 -9 Z');
+            path(g, 'ship-cannon', 'M18 -7 L30 -12.5');
+        });
+        path(hull, 'ship-hull', 'M36 -3.5 L18 -7.5 H-22 L-36 -11.5 V11.5 L-22 7.5 H18 L36 3.5 L27 0 Z');
+        path(hull, 'ship-stripe', 'M-4 -7.5 V7.5 M-14 -7.8 V7.8');
+        circle(hull, 'ship-window', 9, 0, 3.3);
+    },
+
+    /** Debulhador Cabal: corpo pesado e arredondado, com um motor redondo de cada lado. */
+    thresher(hull) {
+        hull.style.setProperty('--glow', '#ff8a4a');
+        mirrored(hull, g => {
+            path(g, 'ship-fins', 'M-24 -6 L-38 -12.5 V-3 L-26 -2 Z');
+            path(g, 'ship-fins', 'M-4 -8 H8 L6 -11 H-2 Z');
+            circle(g, 'ship-engine', 2, -13.2, 6.3);
+            circle(g, 'ship-glow', 2, -13.2, 2.8);
+            path(g, 'ship-cannon', 'M30 -5 H38');
+        });
+        path(hull, 'ship-hull', 'M34 0 C34 -6 26 -9.5 16 -9.5 H-18 C-26 -9.5 -30 -5 -30 0 C-30 5 -26 9.5 -18 9.5 H16 C26 9.5 34 6 34 0 Z');
+        path(hull, 'ship-line', 'M4 -9.5 V9.5 M-12 -9.5 V9.5');
+        rect(hull, 'ship-window', 20, -3, 8, 6, 2);
+    },
+
+    /** Nave-tumba da Colmeia: casco de espinhos, com uma fenda de luz verde. */
+    tombship(hull) {
+        hull.style.setProperty('--glow', '#9dff8a');
+        path(hull, 'ship-hull', 'M36 0 L22 -5 L12 -11 L2 -8 L-10 -15.5 L-18 -9 L-34 -13 L-28 -4 L-40 0 '
+            + 'L-28 4 L-34 13 L-18 9 L-10 15.5 L2 8 L12 11 L22 5 Z');
+        path(hull, 'ship-dark', 'M22 0 L8 -4.5 L-14 -4 L-24 0 L-14 4 L8 4.5 Z');
+        path(hull, 'ship-glow-line', 'M-12 0 H9');
+        path(hull, 'ship-line', 'M2 -8 L4 -4.5 M-10 -15.5 L-8 -4 M2 8 L4 4.5 M-10 15.5 L-8 4');
+        circle(hull, 'ship-glow', 16.5, 0, 1.8);
+    },
 };
 
 /** Nome de cada casco, mostrado ao passar o mouse sobre a nave. */
@@ -254,6 +307,10 @@ export const HULL_NAMES = {
     narcissus: 'Narcissus',
     sulaco: 'Sulaco',
     derelict: 'Nave abandonada',
+    jumpship: 'Nave de salto do Guardião',
+    skiff: 'Esquife dos Decaídos',
+    thresher: 'Debulhador Cabal',
+    tombship: 'Nave-tumba da Colmeia',
 };
 
 /** Desenha o casco pedido; um nome desconhecido cai no casco padrão. */

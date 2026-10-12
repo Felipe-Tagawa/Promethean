@@ -78,6 +78,19 @@ export const UNIVERSES = [
             {label: 'Sinal de origem desconhecida', icon: 'patrol'},
         ],
     },
+    {
+        key: 'destiny',
+        name: 'Destiny',
+        at: 'na Torre da Última Cidade',
+        of: 'da Torre',
+        hulls: ['jumpship', 'skiff', 'thresher', 'tombship'],
+        priorities: [
+            {label: 'Guardião sem Luz', icon: 'alert', note: 'Perdeu o Fantasma'},
+            {label: 'Refugiados Eliksni a bordo', icon: 'crew'},
+            {label: 'Engramas para o Criptarca', icon: 'engram'},
+            {label: 'Patrulha de rotina', icon: 'patrol'},
+        ],
+    },
 ];
 
 export function findUniverse(key) {
