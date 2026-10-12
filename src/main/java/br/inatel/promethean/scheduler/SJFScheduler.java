@@ -43,8 +43,7 @@ public class SJFScheduler implements Scheduler {
 
     /**
      * Escolhe a nave de menor burstTime e a remove da fila de prontos.
-     * Empate de burst: ganha a de menor currentPriority; se ainda empatar,
-     * ganha quem entrou antes na fila
+     * Empate de burst: ganha quem tiver menor arrivalTime (ordem cronológica de chegada).
      *
      * @param now tick em que a escolha ocorre (não usado pelo SJF)
      * @return nave escolhida, ou null se a fila estiver vazia
@@ -52,7 +51,6 @@ public class SJFScheduler implements Scheduler {
     @Override
     public SpaceCraft selectNext(int now) {
         if (!queue.isEmpty()) {
-            int minBt = Integer.MAX_VALUE;
             SpaceCraft min = null;
 
             for (SpaceCraft c : queue) {
