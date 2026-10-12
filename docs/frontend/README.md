@@ -136,7 +136,7 @@ O front não recebe o estado da estação a cada tick. Ele o reconstrói aplican
 | Gantt | Pares `DISPATCH` → `PREEMPT`/`FINISH` |
 | Espera e turnaround por nave | Ticks em `READY` e `FINISH − arrivalTime` |
 | Nível de urgência de cada nave | Posição do `basePriority` entre os valores da carga; o menor número é o mais urgente, como no `PriorityScheduler` |
-| Espera da nave mais urgente | `FINISH − arrivalTime − burstTime` da nave de menor `basePriority`, em cada algoritmo |
+| Espera da nave mais urgente | Ticks em `READY` da nave de menor `basePriority`, em cada algoritmo |
 | Médias e trocas de contexto | Vêm prontas em `metrics` |
 
 ### 3.5 Exemplo
@@ -367,6 +367,7 @@ O seletor **Universo**, na barra de cima das duas páginas, troca a aparência d
 | Halo | Estrutura Forerunner | Fragata da UNSC, Pelican, cruzador do Covenant, nave Promethean | Anel Halo |
 | Real (ISS) | ISS | Soyuz, Crew Dragon, ônibus espacial, cargueiro Cygnus | Terra |
 | Alien | Sevastopol | Nostromo, Narcissus, Sulaco, nave abandonada | Gigante gasoso |
+| Destiny | A Torre da Última Cidade | Nave de salto do Guardião, Esquife dos Decaídos, Debulhador Cabal, Nave-tumba da Colmeia | O Viajante e as montanhas da cidade |
 
 **Contexto das prioridades.** Cada universo dá uma situação a cada nível de prioridade (por exemplo, "Feridos a bordo"). Ela aparece no selo ao lado da nave, na segunda linha da tabela de naves e no evento de chegada. O nível vem do `basePriority` que já está na gravação, então vale para os três algoritmos. É o que permite comparar: no FCFS e no SJF a nave mais urgente espera 7 ticks; na Prioridade, 0. Esse número aparece na última coluna das métricas e no canto da cena.
 
@@ -382,7 +383,7 @@ No escalonamento, a nave usa o casco do nível de prioridade dela, para o desenh
 | `js/icons.js` | Os ícones das situações |
 | `css/universe.css` | As cores de cada universo e o estilo das peças novas |
 
-A escolha fica guardada no navegador e vale nas duas páginas. `?universo=chave` na URL abre direto em um universo (`padrao`, `starwars`, `halo`, `real` ou `alien`).
+A escolha fica guardada no navegador e vale nas duas páginas. `?universo=chave` na URL abre direto em um universo (`padrao`, `starwars`, `halo`, `real`, `alien` ou `destiny`).
 
 Para criar um universo: uma entrada em `UNIVERSES`, os cascos em `hulls.js`, a estação e o céu em `stations.js` e um bloco de cores em `universe.css`. Os cascos precisam caber na caixa do casco original (x de -41 a 37, y de -20 a 20), porque as duas cenas posicionam naves e rótulos contando com esse tamanho.
 
@@ -408,6 +409,7 @@ O seletor **Ameaça**, na página de escalonamento, aplica um imprevisto à simu
 | `burst` | A nave precisa de mais ticks de porta | O processo passa a precisar de mais CPU |
 | `destroy` | A nave sai da órbita ou da porta sem terminar | Processo encerrado à força |
 | `port` | A porta fica interditada por alguns ticks | Núcleo de CPU fora de serviço |
+| `destroy` com `revive` | A nave destruída volta à órbita alguns ticks depois e recomeça do zero | Processo reiniciado por um supervisor depois de cair |
 
 Regras decididas:
 
@@ -416,6 +418,7 @@ Regras decididas:
 - **Nave destruída fica fora das médias.** Espera, turnaround e resposta consideram só as naves que terminaram; as perdidas aparecem em um contador.
 - **Porta interditada: a nave atracada fica parada.** Ela não avança nem perde o lugar, e não conta troca de contexto. As naves na órbita continuam esperando (e envelhecendo, no algoritmo de prioridade).
 - **Diferença para a simulação sem ameaça.** Embaixo de cada métrica aparece quanto ela mudou.
+- **Reviver só existe no Destiny, e só para a nave do Guardião.** A nave revivida volta para o fim da órbita, perde o que já tinha executado e não conta como perdida. O tempo em que ficou destruída não é espera.
 
 No FCFS e no SJF, uma nave que vira prioridade máxima continua esperando, porque esses algoritmos ignoram a prioridade. Só no de Prioridade ela fura a fila.
 
@@ -439,6 +442,10 @@ No FCFS e no SJF, uma nave que vira prioridade máxima continua esperando, porqu
 | Alien | Organismo à solta | 7 | A nave atracada precisa de mais 5 ticks |
 | | Autodestruição | 3 | A nave mais urgente é destruída |
 | | Quarentena da estação | 4 | Porta interditada por 4 ticks |
+| Destiny | Emboscada Cabal | 3 | A nave do Guardião é destruída e o Fantasma a revive 4 ticks depois |
+| | Chegada da Frota Negra | 5 | Porta interditada por 4 ticks, com a Pirâmide sobre a Torre |
+| | Laço temporal Vex | 6 | A nave atracada precisa de mais 4 ticks |
+| | Possuída por Oryx | 7 | A nave menos urgente deixa a órbita e não volta |
 
 Se o alvo não estiver na órbita nem atracado no tick marcado, a ameaça espera o primeiro tick em que ele estiver.
 
@@ -456,7 +463,8 @@ Só existem nas gravações do motor da tela; o servidor não os envia.
 |---|---|---|
 | `priority` | `priority` | Nova prioridade base da nave |
 | `burst` | `amount`, `burstTime` | Quanto cresceu e o novo total |
-| `destroy` | `style` | `explode` ou `abort`; `portId` vem preenchido se a nave estava atracada |
+| `destroy` | `style` | `explode`, `abort` ou `taken`; `portId` vem preenchido se a nave estava atracada |
+| `revive` | | A nave volta ao estado `READY`, com o burst inteiro por executar |
 | `port-down` | `until` | Tick em que a porta reabre; `spaceCraftId` é `null` |
 | `port-up` | | A porta voltou a operar |
 
