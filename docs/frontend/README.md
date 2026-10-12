@@ -309,7 +309,7 @@ O simulador não usa threads: é uma conta, que dá sempre o mesmo resultado. As
 
 | Parte | O que precisa existir |
 |---|---|
-| Motor (`simulation/`) | `SimulationEngine` emitindo os quatro eventos na ordem do tick; `DockingPort.getId()`; `MetricsCollector` preenchendo `SimulationMetrics` |
+| Motor (`simulation/`) | `SimulationEngine` emitindo os quatro eventos na ordem do tick; `DockingPort.getId()`; `SimulationEngine` preenchendo `SimulationMetrics` |
 | Servidor (`server/`) | Arquivos estáticos de `public/`; os dois `GET` de escalonamento, que rodam o motor com um listener que guarda os eventos em uma lista; os dois `POST` de sincronismo; o WebSocket `/ws/sync`, que repassa cada evento a todos os clientes conectados |
 | Sincronismo (`sync/`) | Os dois roteiros (`race` e `deadlock`) com threads reais; a chave `sync` ligando e desligando as primitivas; detecção do ciclo; emissão dos eventos da seção 4.2 |
 | Front (`public/`) | As duas cenas, o replay, o modo demonstração e a derivação de estado das seções 3.4 e 4.3 |

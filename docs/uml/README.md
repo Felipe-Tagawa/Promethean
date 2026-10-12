@@ -37,7 +37,6 @@ flowchart TB
         SC["SpaceCraft<br/>processo / PCB"]:::existe
         PS["ProcessState<br/>estados"]:::existe
         DP["DockingPort<br/>núcleo de CPU"]:::existe
-        SM["SimulationMetrics<br/>resultado final"]:::existe
         WL["Workload<br/>carga de trabalho"]:::fase3
     end
 
@@ -45,46 +44,45 @@ flowchart TB
         SI["Scheduler<br/>interface"]:::existe
         FC["FcfsScheduler"]:::fase2
         SJF["SJFScheduler"]:::fase2
-        PA["PriorityAgingScheduler"]:::fase3
+        PA["PriorityScheduler"]:::fase3
     end
 
-    subgraph ENGINE["engine/ — o mecanismo"]
+    subgraph ENGINE["simulation/ — o mecanismo"]
         EN["SimulationEngine<br/>clock + dispatcher"]:::fase2
         EV["SimulationEvent<br/>EventType"]:::fase2
         LI["SimulationListener<br/>interface"]:::fase2
         CG["ConsoleGanttPrinter"]:::fase2
+        SM["SimulationMetrics<br/>resultado final"]:::fase2
     end
 
-    subgraph METRICS["metrics/"]
-        MC["MetricsCollector"]:::fase2
-    end
-
-    subgraph FUT["sync/ e server/ — extras"]
+    subgraph FUT["sync/ e server/ — concorrência e web"]
         SQ["SharedReadyQueue"]:::fase4
-        SR["SubsystemResourceManager"]:::fase4
-        AB["AirlockBarrier"]:::fase4
+        SR["SubSystemResourceManager"]:::fase4
+        AB["AirLockBarrier"]:::fase4
+        SS["SyncScenarioManager"]:::fase4
         WS["WebSocketServer"]:::fase4
     end
 
     Main --> EN
     Main --> WL
     Main --> SI
+    Main --> CG
+    Main -.fase 4.-> SQ
     FC -.implementa.-> SI
     SJF -.implementa.-> SI
     PA -.implementa.-> SI
     EN --> SI
     EN --> DP
     EN --> SC
-    EN --> MC
     EN --> LI
+    EN --> SM
     DP --> SC
     SC --> PS
-    MC --> SM
     CG -.implementa.-> LI
     WS -.implementa.-> LI
-    EN -.fase 4.-> SR
-    EN -.fase 4.-> SQ
-    SR -.-> AB
+    WS --> SS
+    SS --> SR
+    SS --> AB
 
     classDef existe fill:#fde7c4,stroke:#b86e12,color:#2d1a02,stroke-width:1.5px
     classDef fase2 fill:#d7e4ff,stroke:#2f56b0,color:#0c1a3d,stroke-width:1.5px
@@ -166,8 +164,8 @@ classDiagram
         -Deque~SpaceCraft~ queue
     }
 
-    class PriorityAgingScheduler {
-        -List~SpaceCraft~ ready
+    class PriorityScheduler {
+        -List~SpaceCraft~ readyQueue
         -int agingInterval
         -int agingBoost
     }
@@ -176,7 +174,7 @@ classDiagram
     DockingPort --> "0..1" SpaceCraft : nave atracada
     Scheduler <|.. FcfsScheduler
     Scheduler <|.. SJFScheduler
-    Scheduler <|.. PriorityAgingScheduler
+    Scheduler <|.. PriorityScheduler
     Scheduler ..> SpaceCraft : ordena
 ```
 
@@ -223,7 +221,6 @@ classDiagram
         -List~DockingPort~ ports
         -List~SpaceCraft~ all
         -int clock
-        -int contextSwitchCost
         -int contextSwitches
         -List~SimulationListener~ listeners
         +SimulationEngine(Scheduler, int portCount, List~SpaceCraft~)
@@ -260,11 +257,7 @@ classDiagram
 
     class ConsoleGanttPrinter {
         +onEvent(SimulationEvent e) void
-        +print() void
-    }
-
-    class MetricsCollector {
-        +compute(String algorithm, List~SpaceCraft~ finished, int totalTime, int contextSwitches) SimulationMetrics
+        +print(SimulationMetrics metrics) void
     }
 
     class SimulationMetrics {
@@ -274,7 +267,7 @@ classDiagram
         double avgTurnaroundTime
         double avgResponseTime
         double throughput
-        int contextSwitches
+        double contextSwitches
     }
 
     class Scheduler {
@@ -286,16 +279,16 @@ classDiagram
     Main ..> Workload : carrega
     Main ..> SimulationEngine : cria um por algoritmo
     Main ..> Scheduler : escolhe
+    Main ..> ConsoleGanttPrinter : usa
     SimulationEngine o-- "1" Scheduler : política (Strategy)
     SimulationEngine *-- "1..*" DockingPort : portas
     SimulationEngine --> "*" SpaceCraft : naves
     SimulationEngine --> "*" SimulationListener : notifica (Observer)
-    SimulationEngine ..> MetricsCollector : ao final
+    SimulationEngine ..> SimulationMetrics : cria ao final
     SimulationEngine ..> SimulationEvent : cria
     SimulationListener <|.. ConsoleGanttPrinter
     SimulationListener ..> SimulationEvent
     SimulationEvent --> EventType
-    MetricsCollector ..> SimulationMetrics : cria
     Workload --> "*" SpaceCraft
 ```
 
@@ -305,8 +298,8 @@ classDiagram
   - `Workload.freshCopy()` é importante: cada algoritmo precisa receber **naves novas**, porque a simulação altera o estado delas.
 - `SimulationEngine` tem o **clock** e as **portas**. Ele não sabe qual algoritmo está rodando; só chama os métodos da interface `Scheduler`.
   - A lista `all` guarda todas as naves. É por ela que o motor chama `waitTick()` nas naves em READY, sem precisar mexer na fila do escalonador.
-- **Observer:** o motor não imprime nada. Ele emite `SimulationEvent`s e quem quiser escuta. Hoje é o `ConsoleGanttPrinter`; na Fase 4, o `WebSocketServer` escuta os **mesmos** eventos. Os testes também podem escutar.
-- `MetricsCollector` calcula as métricas do README a partir das naves finalizadas:
+- **Observer:** o motor não imprime nada. Ele emite `SimulationEvent`s e quem quiser escuta. O `ConsoleGanttPrinter` escuta os eventos para imprimir a linha do tempo e o gráfico de Gantt; o `WebSocketServer` também implementa a interface para o canal web.
+- O próprio `SimulationEngine` calcula as métricas do README a partir das naves finalizadas:
 
 | Métrica | Fórmula |
 |---|---|
@@ -420,7 +413,7 @@ sequenceDiagram
 
 **Quando a prioridade envelhecida é desfeita:** o motor chama `resetPriority()` na **preempção**, junto com o `setState(READY)`, e não no despacho. Enquanto está na porta, a nave mantém a prioridade que conquistou pelo aging; ao voltar para a órbita, recomeça da `basePriority`. Se o reset fosse feito no despacho, a nave perderia o bônus no instante em que atraca e seria expulsa no tick seguinte pela nave que acabou de tirar da porta. Na carga de referência (N1 a N4), isso daria 3 preempções, com N1 e N3 se revezando nos ticks 12 e 13; com o reset na preempção há só 1.
 
-**Custo da troca de contexto (Δt), Fase 3:** quando uma porta recebe uma nave diferente da anterior, ela fica `contextSwitchCost` ticks "manobrando" antes de a nave começar a executar. O motor soma 1 em `contextSwitches` a cada troca.
+**Troca de contexto:** a troca de contexto entre naves é instantânea (Δt = 0). O motor soma 1 em `contextSwitches` a cada troca.
 
 ---
 
@@ -440,7 +433,7 @@ classDiagram
         +dequeue() SpaceCraft
     }
 
-    class SubsystemResourceManager {
+    class SubSystemResourceManager {
         -Semaphore roboticArm
         -Semaphore telemetryLinks
         +acquire(ResourceType r) void
@@ -453,9 +446,14 @@ classDiagram
         TELEMETRY_LINK
     }
 
-    class AirlockBarrier {
+    class AirLockBarrier {
         -CyclicBarrier barrier
         +awaitEqualization() void
+    }
+
+    class SyncScenarioManager {
+        +start(scenario, sync, recovery, ships, arms) void
+        +stop() void
     }
 
     class WebSocketServer {
@@ -468,40 +466,45 @@ classDiagram
         <<interface>>
     }
 
-    SubsystemResourceManager --> ResourceType
-    SubsystemResourceManager ..> AirlockBarrier : usa na liberação
+    SubSystemResourceManager --> ResourceType
+    SyncScenarioManager --> SubSystemResourceManager : usa semáforo
+    SyncScenarioManager --> AirLockBarrier : usa barreira
+    WebSocketServer --> SyncScenarioManager : orquestra
     SimulationListener <|.. WebSocketServer
 ```
 
 | Classe | Primitiva | Conceito de SO |
 |---|---|---|
 | `SharedReadyQueue` | `ReentrantLock` + `Condition` | Produtor-consumidor: `dequeue` faz `await()` com a fila vazia; `enqueue` faz `signal()` |
-| `SubsystemResourceManager` | `Semaphore(1)` braço, `Semaphore(2)` links | Recurso de capacidade finita; quem não consegue `acquire()` vai para BLOCKED; `release()` sempre no `finally` |
-| `AirlockBarrier` | `CyclicBarrier` | Várias threads só seguem quando **todas** chegaram (pressão + trava da escotilha) |
-| `WebSocketServer` | Javalin | Envia os mesmos `SimulationEvent`s do console para a página em `localhost:7070` |
+| `SubSystemResourceManager` | `Semaphore(1)` braço, `Semaphore(2)` links | Recurso de capacidade finita; quem não consegue `acquire()` vai para BLOCKED; `release()` sempre no `finally` |
+| `AirLockBarrier` | `CyclicBarrier` | Várias threads só seguem quando **todas** chegaram (equalização da câmara de ar) |
+| `SyncScenarioManager` | Threads reais | Orquestrador dos cenários de concorrência, colisão e resolução de deadlocks |
+| `WebSocketServer` | Javalin | Servidor web que expõe rotas HTTP e WebSocket em `localhost:7070` |
 
 ---
 
 ## 7. Checklist por classe
 
-| Classe | Pacote | Conceito de SO | Situação hoje | O que fazer | Fase |
-|---|---|---|---|---|---|
-| `ProcessState` | model | Estados do processo | Tem `WAITING` e `TERMINATED` | Deixar `NEW, READY, RUNNING, BLOCKED, FINISHED` | 1 |
-| `SpaceCraft` | model | PCB | Campos certos, só getters; `remainingTime` é `final`; tempos em `float` | Tempos em `int`; `remainingTime = burstTime` no construtor; adicionar os métodos da seção 2 | 1 |
-| `DockingPort` | model | Núcleo de CPU | `dock`/`undock` prontos | Construtor só com `id`; métodos `getId()`, `tick()` e `getCurrent()` | 1 |
-| `Scheduler` | scheduler | Escalonador de curto prazo | Interface vazia | Declarar os métodos | 2 |
-| `FcfsScheduler` | scheduler | FCFS | — | Criar | 2 |
-| `SJFScheduler` | scheduler | SJF não-preemptivo | — | Criar | 2 |
-| `SimulationEngine` | engine | Dispatcher + clock | — | Criar com 1 porta | 2 |
-| `SimulationEvent`, `EventType`, `SimulationListener`, `ConsoleGanttPrinter` | engine | Registro/linha do tempo | — | Criar | 2 |
-| `MetricsCollector` | metrics | Métricas de avaliação | — | Criar | 2 |
-| `SimulationMetrics` | model | Resultado | Classe vazia | Preencher (ou virar `record`) | 2 |
-| `Main` | raiz | — | Vazia | Rodar os algoritmos e imprimir a tabela | 2 |
-| Testes JUnit | `src/test` | — | Não existem | Casos calculados à mão (espera e turnaround) | 2 |
-| `PriorityAgingScheduler` | scheduler | Prioridade preemptiva + aging | — | Criar | 3 |
-| Várias portas + Δt | engine | Multinúcleo + troca de contexto | — | Estender o motor | 3 |
-| `Workload` | model | Carga de trabalho | — | Ler JSON e gerar aleatório com seed | 3 |
-| `sync/*`, `server/*` | sync, server | Sincronização e interface | — | Criar | 4 |
+| Classe | Pacote | Conceito de SO | Situação |
+|---|---|---|---|
+| `ProcessState` | model | Estados do processo | `NEW, READY, RUNNING, BLOCKED, FINISHED` |
+| `SpaceCraft` | model | PCB | Tempos em `int`; ciclo de vida e cálculo de métricas |
+| `DockingPort` | model | Núcleo de CPU | Alocação (`dock`), desalocação (`undock`) e execução de clock (`tick`) |
+| `Scheduler` | scheduler | Escalonador de curto prazo | Interface Strategy com `selectNext`, `shouldPreempt`, `onTick` |
+| `FcfsScheduler` | scheduler | FCFS | Implementado com `ArrayDeque` (FIFO) |
+| `SJFScheduler` | scheduler | SJF não-preemptivo | Implementado com menor `burstTime` e desempate por chegada |
+| `PriorityScheduler` | scheduler | Prioridade preemptiva + aging | Implementado com `List`, preempção e envelhecimento periódico |
+| `SimulationEngine` | simulation | Dispatcher + clock | Motor com admissão, despacho, execução e cálculo de métricas |
+| `SimulationEvent`, `EventType`, `SimulationListener` | simulation | Registro e Observer | Eventos de simulação e padrão Observer |
+| `ConsoleGanttPrinter` | simulation | Visualização | Linha do tempo, Diagrama de Gantt textual e métricas formatadas |
+| `SimulationMetrics` | simulation | Resultado | Record com médias de espera, resposta, retorno, vazão e trocas de contexto |
+| `Workload` | model | Carga de trabalho | Carga de referência oficial e clonagem com `freshCopy()` |
+| `SharedReadyQueue` | sync | Produtor-Consumidor | Fila protegida por `ReentrantLock` e `Condition notEmpty` |
+| `SubSystemResourceManager`, `ResourceType` | sync | Semáforo contador | Gestão de recursos com `Semaphore` para braço robótico e telemetria |
+| `AirLockBarrier` | sync | Barreira cíclica | Sincronização de threads com `CyclicBarrier` |
+| `SyncScenarioManager` | sync | Concorrência viva | Execução real de threads com detecção de colisões e deadlocks |
+| `WebSocketServer` | server | Web & WebSocket | Javalin servindo front-end estático, APIs REST e canal `/ws/sync` |
+| `Main` | raiz | Ponto de entrada | Inicialização do servidor web, simulação comparativa e demo concorrente |
 
 ---
 
