@@ -37,6 +37,20 @@ public class SimulationEngine {
         listeners.add(listener);
     }
 
+    /**
+     * Ids das portas, na ordem em que foram criadas (P1, P2, ...).
+     * Quem monta a gravação para a tela usa esta lista em vez de repetir a regra dos nomes
+     *
+     * @return lista nova com o id de cada porta
+     */
+    public List<String> getPortIds() {
+        List<String> ids = new ArrayList<>();
+        for (DockingPort port : ports) {
+            ids.add(port.getId());
+        }
+        return ids;
+    }
+
     public SimulationMetrics run(){
         while (!isAllFinished(all)){
             // Um erro de escalonador (nave que nunca termina) vira exceção em vez de travar o programa
