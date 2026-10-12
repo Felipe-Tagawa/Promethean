@@ -1,4 +1,4 @@
-package br.inatel.promethean.simulation;
+package br.inatel.promethean.engine;
 
 public record SimulationMetrics(String algorithm,
                                 double avgWaitingTime,
