@@ -1,5 +1,6 @@
 // Reconstrói o estado da estação em cada tick a partir da gravação (seção 3.4 do contrato).
 // O front não recebe o estado pronto: ele aplica os eventos em ordem. É isso que permite voltar no tempo.
+// Os eventos THREAT só existem nas gravações do motor da tela (engine.js), quando há uma ameaça ativa.
 
 import {PALETTE} from './palette.js';
 
@@ -30,9 +31,14 @@ export function buildTimeline(recording) {
     // A nave mais urgente só existe se as prioridades forem diferentes entre si
     const urgentId = levels.length > 1 ? ships.find(s => s.priorityRank === 0).id : null;
 
-    const events = recording.events.map(e => ({...e, tick: Number(e.tick), spaceCraftId: String(e.spaceCraftId)}));
+    // Um evento de porta interditada não cita nave nenhuma
+    const events = recording.events.map(e => ({
+        ...e,
+        tick: Number(e.tick),
+        spaceCraftId: e.spaceCraftId == null ? null : String(e.spaceCraftId),
+    }));
     for (const e of events) {
-        if (!byId.has(e.spaceCraftId)) {
+        if (e.spaceCraftId !== null && !byId.has(e.spaceCraftId)) {
             throw new Error(`O evento ${e.type} do tick ${e.tick} cita a nave "${e.spaceCraftId}", que não está na carga.`);
         }
     }
@@ -45,13 +51,18 @@ export function buildTimeline(recording) {
     const totalTicks = events.reduce((max, e) => Math.max(max, e.tick), 0);
 
     // Estado que vai sendo alterado tick a tick
-    const live = new Map(ships.map(s => [s.id, {state: 'NEW', portId: null, executed: 0, waiting: 0}]));
+    // Mudam só com ameaça: burst pode crescer, struck marca a nave atingida e boosted a que passou na frente de todas
+    const live = new Map(ships.map(s => [s.id, {
+        state: 'NEW', portId: null, executed: 0, waiting: 0, burst: s.burstTime, struck: false, boosted: false, exit: null,
+    }]));
     const readyOrder = []; // ordem em que as naves entraram em READY
     const open = new Map(); // nave -> trecho do Gantt ainda aberto
     const segments = [];
-    const results = new Map(ships.map(s => [s.id, {start: null, finish: null}]));
+    const outages = []; // intervalos em que as portas ficaram interditadas
+    const results = new Map(ships.map(s => [s.id, {start: null, finish: null, killed: null}]));
     const frames = [];
     let preemptions = 0;
+    let portsDown = false;
     let cursor = 0;
 
     const closeSegment = (id, tick) => {
@@ -99,6 +110,30 @@ export function buildTimeline(recording) {
                     closeSegment(e.spaceCraftId, e.tick);
                     results.get(e.spaceCraftId).finish = e.tick;
                     break;
+                case 'THREAT':
+                    for (const effect of e.effects ?? []) {
+                        if (effect.kind === 'priority') {
+                            ship.struck = true;
+                            ship.boosted = true;
+                        } else if (effect.kind === 'burst') {
+                            ship.struck = true;
+                            ship.burst += Number(effect.amount);
+                        } else if (effect.kind === 'destroy') {
+                            ship.state = 'KILLED';
+                            ship.portId = null;
+                            ship.exit = effect.style;
+                            remove(readyOrder, e.spaceCraftId);
+                            closeSegment(e.spaceCraftId, e.tick);
+                            results.get(e.spaceCraftId).killed = e.tick;
+                        } else if (effect.kind === 'port-down') {
+                            portsDown = true;
+                            outages.push({start: e.tick, end: null});
+                        } else if (effect.kind === 'port-up') {
+                            portsDown = false;
+                            if (outages.length > 0) outages[outages.length - 1].end = e.tick;
+                        }
+                    }
+                    break;
                 default:
                     // AGING e tipos futuros: ignorados nesta versão do contrato
                     break;
@@ -111,22 +146,28 @@ export function buildTimeline(recording) {
             snapshot[s.id] = {
                 state: ship.state,
                 portId: ship.portId,
-                remaining: Math.max(0, s.burstTime - ship.executed),
+                burst: ship.burst,
+                remaining: Math.max(0, ship.burst - ship.executed),
                 waiting: ship.waiting,
                 slot: readyOrder.indexOf(s.id),
+                struck: ship.struck,
+                boosted: ship.boosted,
+                exit: ship.exit,
             };
         }
-        frames.push({tick, ships: snapshot, readyCount: readyOrder.length, events: now, preemptions});
+        frames.push({tick, ships: snapshot, readyCount: readyOrder.length, events: now, preemptions, portsDown});
 
-        // O quadro vale para o intervalo [tick, tick + 1): só depois dele os contadores andam
+        // O quadro vale para o intervalo [tick, tick + 1): só depois dele os contadores andam.
+        // Com a porta interditada, a nave atracada fica parada.
         for (const ship of live.values()) {
-            if (ship.state === 'RUNNING') ship.executed++;
+            if (ship.state === 'RUNNING' && !portsDown) ship.executed++;
             if (ship.state === 'READY') ship.waiting++;
         }
     }
 
     // Trecho que a gravação não fechou (não deveria acontecer): fecha no fim para o Gantt não quebrar
     for (const segment of open.values()) segment.end = totalTicks;
+    for (const outage of outages) outage.end ??= totalTicks;
 
     return {
         algorithm: String(recording.algorithm ?? ''),
@@ -136,9 +177,11 @@ export function buildTimeline(recording) {
         totalTicks,
         frames,
         segments,
+        outages,
         results,
         events,
         metrics: recording.metrics ?? null,
+        threat: recording.threat ?? null,
     };
 }
 
@@ -170,6 +213,8 @@ export function describeEvent(e, situationOf = null) {
             return `${e.spaceCraftId} recuou da porta ${e.portId} (preempção)`;
         case 'FINISH':
             return `${e.spaceCraftId} concluiu e deixou a porta ${e.portId}`;
+        case 'THREAT':
+            return e.text ?? 'ameaça';
         default:
             return `${e.spaceCraftId}: ${e.type}`;
     }

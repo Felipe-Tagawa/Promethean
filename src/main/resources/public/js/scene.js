@@ -5,6 +5,7 @@ import {drawHull, drawEffect, HULL_NAMES} from './hulls.js';
 import {drawSky, drawStationBody, drawStationHub, armStartOf} from './stations.js';
 import {hullFor, priorityContext} from './universe.js';
 import {drawIcon} from './icons.js';
+import {playThreat} from './threatfx.js';
 
 const STATION = {x: 610, y: 250};
 const ORBIT = {rx: 335, ry: 195};
@@ -32,6 +33,9 @@ export class Scene {
         this.backdrop = svg('g', {class: 'backdrop'}, this.root);
         this.portLayer = svg('g', {class: 'ports'}, this.root);
         this.shipLayer = svg('g', {class: 'ships'}, this.root);
+        // Por cima de tudo: o véu da tempestade, enquanto as portas estão interditadas, e os efeitos passageiros
+        svg('rect', {class: 'storm', width: 1000, height: 500, 'aria-hidden': 'true'}, this.root);
+        this.fxLayer = svg('g', {class: 'fx-layer', 'aria-hidden': 'true'}, this.root);
         this.buildBackdrop();
     }
 
@@ -67,8 +71,14 @@ export class Scene {
         this.timeline = timeline;
         this.portLayer.replaceChildren();
         this.shipLayer.replaceChildren();
+        this.fxLayer.replaceChildren();
         this.ports.clear();
         this.ships.clear();
+
+        // Com uma ameaça ativa, a cor dela tinge o véu e as marcas de porta interditada
+        const visual = timeline.threat?.visual ?? null;
+        this.root.style.setProperty('--threat-color', visual?.color ?? 'transparent');
+        this.root.dataset.outage = visual?.kind === 'storm' ? 'storm' : 'lockdown';
 
         timeline.ports.forEach((id, index) => this.ports.set(id, this.buildPort(id, index, timeline.ports.length)));
         timeline.ships.forEach(ship => this.ships.set(ship.id, this.buildShip(ship)));
@@ -92,6 +102,9 @@ export class Scene {
         slot.style.transformOrigin = `${dock.x}px ${dock.y}px`;
         slot.style.transform = `rotate(${angle - 180}deg)`;
         text('livre', {x: dock.x, y: dock.y + 4, 'text-anchor': 'middle', class: 'port-free'}, g);
+        // Só aparecem com a porta interditada por uma ameaça
+        svg('path', {class: 'port-lock', d: `M${to.x - 9} ${to.y - 9} L${to.x + 9} ${to.y + 9} M${to.x - 9} ${to.y + 9} L${to.x + 9} ${to.y - 9}`}, g);
+        text('interditada', {x: dock.x, y: dock.y + 68, 'text-anchor': 'middle', class: 'port-closed'}, g);
 
         const label = polar(angle, 76);
         text(`Porta ${id}`, {
@@ -122,15 +135,18 @@ export class Scene {
         const hull = drawHull(warp, SHIP_SCALE, design);
         svg('title', {}, hull).textContent = HULL_NAMES[design] ?? '';
         if (context?.effect) drawEffect(hull, context.effect);
+        // Marca de quem foi atingida por uma ameaça; fica escondida até isso acontecer
+        const spreads = this.timeline.threat?.visual.kind === 'spread';
+        drawEffect(hull, spreads ? 'infection' : 'damage').classList.add('fx-struck');
 
         text(ship.id, {y: -30, 'text-anchor': 'middle', class: 'ship-id'}, bob);
-        if (context) this.buildBadge(bob, ship, context);
+        const badge = context ? this.buildBadge(bob, ship, context) : null;
         const gauge = svg('g', {transform: `translate(${-GAUGE_WIDTH / 2} 26)`}, bob);
         svg('rect', {class: 'gauge-track', width: GAUGE_WIDTH, height: 5, rx: 2.5}, gauge);
         const fill = svg('rect', {class: 'gauge-fill', width: GAUGE_WIDTH, height: 5, rx: 2.5}, gauge);
         const rest = text('', {y: 49, 'text-anchor': 'middle', class: 'ship-rest'}, bob);
 
-        return {g, rot, fill, rest, burst: ship.burstTime};
+        return {g, rot, fill, rest, badge, rank: rank === null ? null : Math.min(rank, 3), place: null};
     }
 
     /** Selo com o ícone da situação de prioridade, ao lado do nome da nave. */
@@ -144,6 +160,7 @@ export class Scene {
         svg('circle', {class: 'badge-pulse', r: 10}, badge);
         svg('circle', {class: 'badge-disc', r: 10}, badge);
         drawIcon(badge, context.icon);
+        return badge;
     }
 
     /**
@@ -158,24 +175,31 @@ export class Scene {
         this.timeline.ships.forEach((ship, index) => {
             const view = this.ships.get(ship.id);
             const now = frame.ships[ship.id];
-            const place = this.placeFor(now, index, frame.readyCount);
+            const place = this.placeFor(now, index, frame.readyCount, view);
+            view.place = place;
 
             view.g.dataset.state = now.state;
+            view.g.dataset.struck = String(now.struck);
             view.g.style.transform = `translate(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px)`;
             view.rot.style.transform = `rotate(${place.angle}deg)`;
-            view.fill.style.width = `${(GAUGE_WIDTH * now.remaining / view.burst).toFixed(1)}px`;
+            view.fill.style.width = `${(GAUGE_WIDTH * now.remaining / now.burst).toFixed(1)}px`;
             view.rest.textContent = `resta ${now.remaining}`;
+            // A nave posta na frente de todas por uma ameaça passa a ter o selo da mais urgente
+            if (view.badge) view.badge.dataset.rank = String(now.boosted ? 0 : view.rank);
             if (now.state === 'RUNNING') busy.add(now.portId);
         });
 
         for (const [id, port] of this.ports) {
             port.g.dataset.busy = String(busy.has(id));
+            port.g.dataset.down = String(frame.portsDown);
         }
+        this.root.dataset.portsDown = String(frame.portsDown);
 
         if (!animate) {
             // Força o navegador a aplicar as posições antes de religar as transições
             void this.root.getBoundingClientRect();
             this.root.classList.remove('no-anim');
+            this.fxLayer.replaceChildren(); // um salto no tempo descarta as animações em andamento
             return;
         }
 
@@ -184,12 +208,37 @@ export class Scene {
                 this.replay(this.ports.get(String(e.portId)).pulse, 'is-pulsing');
             } else if (e.type === 'ARRIVAL') {
                 this.replay(this.ships.get(e.spaceCraftId).g, 'is-arriving');
+            } else if (e.type === 'THREAT' && this.timeline.threat) {
+                this.playThreat(e);
             }
         }
     }
 
-    placeFor(now, index, readyCount) {
+    /** Dispara a animação de um evento de ameaça sobre a nave ou a porta atingida. */
+    playThreat(event) {
+        const port = this.ports.get(String(event.portId)) ?? this.ports.values().next().value;
+        const struck = event.spaceCraftId === null ? null : this.ships.get(event.spaceCraftId);
+        // O que se espalha de nave em nave parte da mais urgente, que é onde a infecção começou
+        const origin = this.ships.get(this.timeline.urgentId);
+        const moveMs = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--move-ms')) || 700;
+        playThreat({
+            layer: this.fxLayer,
+            event,
+            visual: this.timeline.threat.visual,
+            target: struck?.place ?? port?.dock ?? STATION,
+            source: origin && origin !== struck ? origin.place : null,
+            station: STATION,
+            duration: moveMs,
+        });
+    }
+
+    /** @param view a nave desenhada: guarda a última posição, usada quando ela é destruída */
+    placeFor(now, index, readyCount, view) {
         switch (now.state) {
+            case 'KILLED':
+                // Quem aborta a missão vai embora em direção ao planeta; quem explode some onde estava
+                if (now.exit === 'abort') return {x: 900, y: 570, angle: 35};
+                return view.place ?? {x: STATION.x - DOCK_RADIUS, y: STATION.y, angle: 0};
             case 'READY': {
                 const step = readyCount > 1 ? Math.min(28, 160 / (readyCount - 1)) : 0;
                 const angle = 180 - (now.slot - (readyCount - 1) / 2) * step;

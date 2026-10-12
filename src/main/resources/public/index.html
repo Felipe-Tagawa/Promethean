@@ -44,6 +44,11 @@
             <select id="algorithm"></select>
         </label>
 
+        <label class="field threat-field">
+            <span>Ameaça</span>
+            <select id="threat"></select>
+        </label>
+
         <div class="transport" role="group" aria-label="Reprodução">
             <button type="button" id="btn-restart" class="icon-btn" aria-label="Voltar ao início" title="Voltar ao início (Home)">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 5l-9 7 9 7z"/></svg>
@@ -119,6 +124,7 @@
             <span><b class="state state-READY">READY</b> em órbita</span>
             <span><b class="state state-RUNNING">RUNNING</b> atracada</span>
             <span><b class="state state-FINISHED">FINISHED</b> concluída</span>
+            <span id="legend-killed" hidden><b class="state state-KILLED">KILLED</b> perdida</span>
         </p>
 
         <h2>Eventos</h2>

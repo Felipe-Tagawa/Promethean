@@ -275,8 +275,104 @@ svg.icon {
     pointer-events: none;
 }
 
+/* ---------- ameaças ---------- */
+
+#threat {
+    min-width: 170px;
+}
+
+.threat-field.is-active select {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.threat-field.is-active option {
+    color: var(--text);
+}
+
+.source[data-mode="threat"] {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.source[data-mode="threat"] .source-dot {
+    background: var(--danger);
+}
+
+/* Véu que cobre a cena enquanto as portas estão interditadas por uma tempestade */
+.storm { fill: var(--threat-color, transparent); opacity: 0; pointer-events: none; transition: opacity .5s; }
+#scene[data-ports-down="true"][data-outage="storm"] .storm { animation: storm 1.6s ease-in-out infinite; }
+
+.port-lock { stroke: var(--danger); stroke-width: 4; stroke-linecap: round; opacity: 0; transition: opacity .3s; }
+.port-closed { fill: var(--danger); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: 0; transition: opacity .3s;
+    paint-order: stroke; stroke: var(--scene-bg); stroke-width: 3px; }
+.port[data-down="true"] .port-lock,
+.port[data-down="true"] .port-closed { opacity: 1; }
+.port[data-down="true"] .port-light { fill: var(--danger); animation: alarm-blink 1s ease-in-out infinite; }
+.port[data-down="true"] .port-free { opacity: 0; }
+.port[data-down="true"] .port-arm { stroke: color-mix(in srgb, var(--danger) 45%, #8c9ac0); }
+
+/* A nave perdida some um pouco depois do evento, quando o que a atingiu chega até ela */
+.ship[data-state="KILLED"] { opacity: 0; transition-delay: calc(var(--move-ms) * .55); }
+.no-anim .ship[data-state="KILLED"] { transition-delay: 0s; }
+
+/* Marca de quem foi atingida: fica escondida até acontecer */
+.fx-struck { display: none; }
+.ship[data-struck="true"] .fx-struck { display: inline; }
+
+.fx-layer { pointer-events: none; }
+.fx-rock { stroke: #050817; stroke-width: 1; }
+.fx-flash { mix-blend-mode: screen; }
+.fx-ring { fill: none; stroke-width: 3; }
+.fx-wave { fill: none; stroke-width: 5; }
+.fx-bolt { filter: drop-shadow(0 0 4px currentColor); }
+.fx-beam { stroke-linecap: round; filter: drop-shadow(0 0 6px currentColor); }
+.fx-explosion { fill: #ffb454; stroke: #ffd866; stroke-width: 2; stroke-linejoin: round; }
+.fx-text { font-size: 14px; font-weight: 700; paint-order: stroke; stroke: var(--scene-bg); stroke-width: 3px; }
+
+.state-KILLED { color: var(--danger); }
+.type-THREAT { color: var(--danger); }
+.row-KILLED th, .row-KILLED td { color: var(--muted); }
+.data-table td.is-changed { color: var(--state-ready); font-weight: 700; }
+
+/* Diferença para a simulação sem ameaça, embaixo do valor */
+.delta { display: block; font-size: 10px; font-weight: 600; line-height: 1.25; }
+.delta.is-worse { color: var(--danger); }
+.delta.is-better { color: var(--state-running); }
+
+.gantt-outage {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(45deg, rgba(255, 122, 144, .55) 0 4px, transparent 4px 8px);
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.gantt-kill {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--danger);
+    font-size: 15px;
+    font-weight: 800;
+    text-shadow: 0 0 3px #000, 0 0 3px #000;
+    pointer-events: none;
+}
+
+@keyframes storm {
+    0%, 100% { opacity: .06; }
+    50% { opacity: .17; }
+}
+
+@keyframes alarm-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .35; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .fx-spark, .fx-aura, .fx-spore, .fx-puff, .badge-pulse, .ship.is-arriving .ship-warp, .ship.is-arriving .ship-trail {
+    .fx-spark, .fx-aura, .fx-spore, .fx-puff, .badge-pulse, .ship.is-arriving .ship-warp, .ship.is-arriving .ship-trail,
+    .storm, .port[data-down="true"] .port-light {
         animation: none !important;
     }
 }
