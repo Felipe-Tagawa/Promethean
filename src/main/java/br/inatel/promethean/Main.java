@@ -5,11 +5,16 @@ import br.inatel.promethean.model.Workload;
 import br.inatel.promethean.scheduler.FcfsScheduler;
 import br.inatel.promethean.scheduler.Scheduler;
 import br.inatel.promethean.simulation.SimulationEngine;
+import br.inatel.promethean.server.WebSocketServer;
+
 
 import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
+
+        new WebSocketServer().start(7070);
+
         Workload workload = Workload.reference();
         Scheduler scheduler = new FcfsScheduler();
 
