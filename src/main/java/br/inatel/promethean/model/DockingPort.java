@@ -1,5 +1,8 @@
 package br.inatel.promethean.model;
 
+import br.inatel.promethean.exception.InvalidValueException;
+import br.inatel.promethean.exception.PortOccupiedException;
+
 public class DockingPort {
 
     private final String id;
@@ -16,8 +19,14 @@ public class DockingPort {
     // Alocação
 
     public void dock(SpaceCraft spaceCraft) {
+        if (!isIdle()) {
+            throw new PortOccupiedException("Port " + id + " is already occupied by " + currentSpaceCraft.getId() + ".");
+        }
+        if (spaceCraft == null) {
+            throw new InvalidValueException("Cannot dock a null spacecraft at port " + id + ".");
+        }
         this.currentSpaceCraft = spaceCraft;
-        this.currentSpaceCraft.setState((ProcessState.RUNNING));
+        this.currentSpaceCraft.setState(ProcessState.RUNNING);
     }
 
     // Dispatcher: port.dock(next)

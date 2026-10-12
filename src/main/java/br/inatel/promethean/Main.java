@@ -9,10 +9,10 @@ import br.inatel.promethean.scheduler.PriorityScheduler;
 import br.inatel.promethean.scheduler.SJFScheduler;
 import br.inatel.promethean.scheduler.Scheduler;
 import br.inatel.promethean.server.WebSocketServer;
-import br.inatel.promethean.simulation.ConsoleGanttPrinter;
-import br.inatel.promethean.simulation.SimulationEngine;
-import br.inatel.promethean.simulation.SimulationMetrics;
+import br.inatel.promethean.engine.SimulationEngine;
+import br.inatel.promethean.engine.SimulationMetrics;
 import br.inatel.promethean.sync.SharedReadyQueue;
+import br.inatel.promethean.view.ConsoleGanttPrinter;
 
 public class Main {
     public static void main(String[] args) {

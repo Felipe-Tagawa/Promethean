@@ -6,8 +6,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import br.inatel.promethean.simulation.SimulationEvent;
-import br.inatel.promethean.simulation.SimulationListener;
+import br.inatel.promethean.engine.SimulationEvent;
+import br.inatel.promethean.engine.SimulationListener;
 import br.inatel.promethean.sync.SyncScenarioManager;
 import io.javalin.Javalin;
 import io.javalin.http.staticfiles.Location;

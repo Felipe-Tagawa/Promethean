@@ -22,6 +22,9 @@ public class SharedReadyQueue {
     // Produtor
 
     public void enqueue(SpaceCraft s) {
+        if (s == null) {
+            throw new br.inatel.promethean.exception.InvalidValueException("Cannot enqueue a null spacecraft.");
+        }
         lock.lock();
         try {
             queue.addLast(s);
