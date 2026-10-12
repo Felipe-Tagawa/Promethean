@@ -65,7 +65,7 @@ public class SyncScenarioManager {
         // Dispara uma Thread real para cada nave
         int index = 0;
         for (String shipId : shipIds) {
-            int arrivalDelay = index * 400;
+            int arrivalDelay = index * 250;
             index++;
             Thread t = new Thread(() -> {
                 try {
@@ -93,7 +93,7 @@ public class SyncScenarioManager {
                     }
 
                     // Trabalha transferindo carga
-                    Thread.sleep(600);
+                    Thread.sleep(800);
                     if (sync) {
                         actualCargo.addAndGet(100);
                     } else {
