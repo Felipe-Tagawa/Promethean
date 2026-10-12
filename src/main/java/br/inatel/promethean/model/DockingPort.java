@@ -5,7 +5,6 @@ public class DockingPort {
     private final String id;
     private SpaceCraft currentSpaceCraft; // Processo alocado
 
-
     public DockingPort(String id) {
         this.id = id;
     }
@@ -35,7 +34,7 @@ public class DockingPort {
 
     public void tick() {
         if (this.currentSpaceCraft != null) {
-
+            currentSpaceCraft.executeTick();
         }
     }
 

@@ -2,9 +2,11 @@ package br.inatel.promethean;
 
 import br.inatel.promethean.model.SpaceCraft;
 import br.inatel.promethean.model.Workload;
-import br.inatel.promethean.scheduler.SJFScheduler;
+import br.inatel.promethean.scheduler.FcfsScheduler;
 import br.inatel.promethean.scheduler.Scheduler;
+import br.inatel.promethean.simulation.SimulationEngine;
 import br.inatel.promethean.server.WebSocketServer;
+
 
 import java.util.List;
 
@@ -14,24 +16,21 @@ public class Main {
         new WebSocketServer().start(7070);
 
         Workload workload = Workload.reference();
-        Scheduler sjfscheduler = new SJFScheduler();
+        Scheduler scheduler = new FcfsScheduler();
 
-        // Ainda não há motor nem clock: todas as naves entram na órbita no mesmo instante
-        int now = 0;
+        // O motor altera as naves que recebe; a lista fica guardada para ler os resultados depois
+        List<SpaceCraft> spacecrafts = workload.freshCopy();
 
-        // Momento de chegada
-        List<SpaceCraft> spacecrafts = workload.freshCopy(); // spacecrafts para o SJF
+        SimulationEngine engine = new SimulationEngine(scheduler, 1, spacecrafts);
+        engine.addListener(event -> System.out.println(event));
+
+        System.out.println("Escalonador: " + scheduler.name());
+        engine.run();
+
+        // Tick em que cada nave atracou pela primeira vez e tick em que terminou
+        System.out.println("Resultado:");
         for (SpaceCraft s : spacecrafts) {
-            sjfscheduler.addToReady(s, now);
-        }
-
-        System.out.println("Escalonador: " + sjfscheduler.name());
-        System.out.println("Ordem de escolha:");
-
-        // Esvazia a fila de prontos, uma escolha por volta
-        while (sjfscheduler.hasReady()) {
-            SpaceCraft next = sjfscheduler.selectNext(now);
-            System.out.println(next.getId());
+            System.out.println(s.getId() + ": de " + s.getStartTime() + " a " + s.getFinishTime());
         }
     }
 }
