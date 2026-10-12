@@ -14,6 +14,7 @@ Este documento define **o que o servidor envia e o que o front espera receber**.
 6. [O que o contrato pede de cada parte](#6-o-que-o-contrato-pede-de-cada-parte)
 7. [Ordem de entrega e de corte](#7-ordem-de-entrega-e-de-corte)
 8. [Pontos em aberto](#8-pontos-em-aberto)
+9. [Universos](#9-universos)
 
 ---
 
@@ -28,6 +29,7 @@ Este documento define **o que o servidor envia e o que o front espera receber**.
 | Reprodução | Replay: o servidor roda a simulação inteira e envia o registro; o front tem play, pausa, passo, velocidade e voltar no tempo |
 | Visual | Cena espacial estilizada |
 | Comparação | Um algoritmo por vez na cena, com tabela de métricas e Gantts empilhados |
+| Universos | Um seletor troca a estação, as naves, o fundo e o contexto das prioridades. É só aparência: não muda o contrato (seção 9) |
 
 ---
 
@@ -131,6 +133,8 @@ O front não recebe o estado da estação a cada tick. Ele o reconstrói aplican
 | Ordem na órbita | Ordem em que as naves entraram em `READY` (`ARRIVAL` ou `PREEMPT`) |
 | Gantt | Pares `DISPATCH` → `PREEMPT`/`FINISH` |
 | Espera e turnaround por nave | Ticks em `READY` e `FINISH − arrivalTime` |
+| Nível de urgência de cada nave | Posição do `basePriority` entre os valores da carga; o menor número é o mais urgente, como no `PriorityScheduler` |
+| Espera da nave mais urgente | `FINISH − arrivalTime − burstTime` da nave de menor `basePriority`, em cada algoritmo |
 | Médias e trocas de contexto | Vêm prontas em `metrics` |
 
 ### 3.5 Exemplo
@@ -347,3 +351,37 @@ Se o backend de uma cena não estiver pronto em 14/10, ela é apresentada no mod
 | `resetPriority()` | Decidido: o motor chama na preempção, e não no despacho (nota da seção 5 de [`docs/uml/README.md`](../uml/README.md)). O exemplo `escalonamento-priority.json` segue essa regra e usa o aging padrão do `PriorityScheduler` (intervalo 5, boost 1) |
 | Deadlock com `sync=false` | O servidor ignora o parâmetro nesse cenário e roda com as travas. Enquanto for assim, a tela, no modo servidor, trava o botão de sincronismo em "ligado" quando o cenário é deadlock (`isSyncLocked` em `js/sync/main.js`). No modo demonstração o botão continua livre, porque o simulador cobre o caso |
 | Deadlock com mais naves que braços | No servidor, as naves extras podem tomar o braço de uma nave do anel antes de ele se formar, e com naves em número igual ou maior que o dobro dos braços a recuperação nunca termina. Enquanto for assim, a tela, no modo servidor, limita o deadlock a uma nave por braço (`serverShipCap` em `js/sync/main.js`). Quando o backend tratar esses casos, o limite sai |
+
+---
+
+## 9. Universos
+
+O seletor **Universo**, na barra de cima das duas páginas, troca a aparência da tela. Ele não altera a simulação, os eventos nem nenhuma rota: o servidor não sabe qual universo está em uso.
+
+| Universo | Estação | Naves (da mais urgente para a menos) | Fundo |
+|---|---|---|---|
+| Padrão | A original | A original | O original |
+| Star Wars | Estrela da Morte | Millennium Falcon, X-wing, Star Destroyer, caça TIE | Planeta desértico e dois sóis |
+| Halo | Estrutura Forerunner | Fragata da UNSC, Pelican, cruzador do Covenant, nave Promethean | Anel Halo |
+| Real (ISS) | ISS | Soyuz, Crew Dragon, ônibus espacial, cargueiro Cygnus | Terra |
+| Alien | Sevastopol | Nostromo, Narcissus, Sulaco, nave abandonada | Gigante gasoso |
+
+**Contexto das prioridades.** Cada universo dá uma situação a cada nível de prioridade (por exemplo, "Feridos a bordo"). Ela aparece no selo ao lado da nave, na segunda linha da tabela de naves e no evento de chegada. O nível vem do `basePriority` que já está na gravação, então vale para os três algoritmos. É o que permite comparar: no FCFS e no SJF a nave mais urgente espera 7 ticks; na Prioridade, 0. Esse número aparece na última coluna das métricas e no canto da cena.
+
+No escalonamento, a nave usa o casco do nível de prioridade dela, para o desenho combinar com a situação. No sincronismo não há prioridade, então vale a ordem das naves.
+
+**Onde fica cada coisa.**
+
+| Arquivo | Conteúdo |
+|---|---|
+| `js/universe.js` | A lista de universos (nomes, cascos, situações), a escolha salva no navegador e o seletor |
+| `js/hulls.js` | O desenho de cada casco e os efeitos de emergência (faíscas, aura, vazamento) |
+| `js/stations.js` | O céu e a estação de cada universo |
+| `js/icons.js` | Os ícones das situações |
+| `css/universe.css` | As cores de cada universo e o estilo das peças novas |
+
+A escolha fica guardada no navegador e vale nas duas páginas. `?universo=chave` na URL abre direto em um universo (`padrao`, `starwars`, `halo`, `real` ou `alien`).
+
+Para criar um universo: uma entrada em `UNIVERSES`, os cascos em `hulls.js`, a estação e o céu em `stations.js` e um bloco de cores em `universe.css`. Os cascos precisam caber na caixa do casco original (x de -41 a 37, y de -20 a 20), porque as duas cenas posicionam naves e rótulos contando com esse tamanho.
+
+Os desenhos são silhuetas feitas à mão em SVG, sem imagens nem logos de terceiros, e a tela continua funcionando sem internet.
