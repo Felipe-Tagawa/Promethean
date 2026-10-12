@@ -168,9 +168,12 @@ public class SyncScenarioManager {
 
         int shipCount = shipIds.size();
         int armCount = armNames.size();
+        int ringSize = Math.min(shipCount, armCount);
+        boolean hasDeadlock = shipCount >= armCount && armCount >= 2;
+        List<String> cycleShips = shipIds.subList(0, ringSize);
 
-        // Barreira para que todas as naves peguem o primeiro braço juntas antes de pedir o segundo
-        java.util.concurrent.CyclicBarrier barrier = new java.util.concurrent.CyclicBarrier(shipCount);
+        // Barreira para que apenas as naves do anel peguem o primeiro braço juntas antes de pedir o segundo
+        java.util.concurrent.CyclicBarrier barrier = new java.util.concurrent.CyclicBarrier(ringSize);
 
         List<Thread> shipThreads = new ArrayList<>();
 
@@ -188,16 +191,18 @@ public class SyncScenarioManager {
                     locks.get(firstArm).lock();
                     emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", firstArm));
 
-                    // Aguarda todas pegarem o primeiro braço juntas
-                    barrier.await();
-                    Thread.sleep(300);
+                    // Aguarda apenas as naves do anel pegarem o primeiro braço juntas
+                    if (index < ringSize) {
+                        barrier.await();
+                        Thread.sleep(300);
+                    }
 
-                    // Pede o segundo braço (onde o impasse acontece)
+                    // Pede o segundo braço (onde o impasse acontece para as naves do anel)
                     emit(Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", secondArm));
 
                     if ("timeout".equals(recovery)) {
-                        // MODO TIMEOUT: tenta por tempo limitado (a nave maior desiste primeiro)
-                        long timeout = (index == shipCount - 1) ? 500 : 2500;
+                        // MODO TIMEOUT: tenta por tempo limitado (a maior nave do anel desiste primeiro)
+                        long timeout = (index == ringSize - 1) ? 500 : 2500;
                         boolean acquired = locks.get(secondArm).tryLock(timeout, java.util.concurrent.TimeUnit.MILLISECONDS);
 
                         if (!acquired) {
@@ -208,8 +213,11 @@ public class SyncScenarioManager {
 
                             // Espera o colega terminar e tenta de novo do zero
                             Thread.sleep(1200);
+                            emit(Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", firstArm));
                             locks.get(firstArm).lock();
                             emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", firstArm));
+
+                            emit(Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", secondArm));
                             locks.get(secondArm).lock();
                             emit(Map.of("type", "ACQUIRE", "spaceCraftId", shipId, "resourceId", secondArm));
                         } else {
@@ -261,32 +269,46 @@ public class SyncScenarioManager {
         // Thread monitora do ciclo de Deadlock
         Thread monitor = new Thread(() -> {
             try {
+                if (!hasDeadlock) {
+                    // Sem ciclo de deadlock (ex: ships < arms): aguarda todas terminarem
+                    for (Thread t : shipThreads) {
+                        t.join();
+                    }
+                    emit(Map.of("type", "SYNC_END", "reason", "COMPLETED"));
+                    return;
+                }
+
                 Thread.sleep(900); // espera o impasse se formar
 
                 if ("none".equals(recovery)) {
                     // Modo deixar travar: detecta o ciclo, acende a luz vermelha e para travado
-                    emit(Map.of("type", "DEADLOCK_DETECTED", "spaceCraftIds", shipIds));
+                    emit(Map.of("type", "DEADLOCK_DETECTED", "spaceCraftIds", cycleShips));
                     Thread.sleep(800);
                     emit(Map.of("type", "SYNC_END", "reason", "DEADLOCKED"));
 
                 } else if ("detection".equals(recovery)) {
-                    // Modo detecção: acende o ciclo e aborta a última nave como vítima
-                    emit(Map.of("type", "DEADLOCK_DETECTED", "spaceCraftIds", shipIds));
+                    // Modo detecção: acende o ciclo e aborta a maior nave DENTRO do ciclo
+                    emit(Map.of("type", "DEADLOCK_DETECTED", "spaceCraftIds", cycleShips));
                     Thread.sleep(800);
 
-                    String victim = shipIds.get(shipCount - 1);
+                    int victimIndex = ringSize - 1;
+                    String victim = shipIds.get(victimIndex);
                     emit(Map.of("type", "VICTIM_ABORTED", "spaceCraftId", victim));
 
                     // Notifica a thread da vítima para abortar e soltar o braço
-                    Thread victimThread = shipThreads.get(shipCount - 1);
+                    Thread victimThread = shipThreads.get(victimIndex);
                     victimThread.interrupt();
 
-                    // Aguarda a outra terminar e a vítima tentar de novo até o fim
-                    Thread.sleep(2500);
+                    // Aguarda todas as naves concluírem suas tarefas
+                    for (Thread t : shipThreads) {
+                        t.join();
+                    }
                     emit(Map.of("type", "SYNC_END", "reason", "COMPLETED"));
 
                 } else if ("timeout".equals(recovery)) {
-                    Thread.sleep(2500);
+                    for (Thread t : shipThreads) {
+                        t.join();
+                    }
                     emit(Map.of("type", "SYNC_END", "reason", "COMPLETED"));
                 }
 
