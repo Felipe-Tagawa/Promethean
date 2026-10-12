@@ -1,0 +1,282 @@
+/* Universos: as cores de cada tema e as peças que vieram com eles (naves, estações, fundo e prioridades).
+   Carregado depois de style.css. O atributo data-universe em <html> é posto por js/universe.js. */
+
+:root {
+    --scene-bg: #050817;
+    --glow: #8fe9ff;      /* motores e luzes das naves */
+    --hull-base: #c8cfdf; /* cinza que se mistura à cor da nave nos universos temáticos */
+    --hull-tint: 100%;    /* quanto da cor da nave entra no casco; 100% = cor pura */
+}
+
+/* ---------- seletor ---------- */
+
+.universe-field select {
+    min-width: 128px;
+}
+
+/* ---------- ícones ---------- */
+
+.icon-fill { fill: currentColor; stroke: none; }
+.icon-stroke { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+svg.icon {
+    flex: none;
+    width: 14px;
+    height: 14px;
+}
+
+/* ---------- peças dos cascos ---------- */
+
+.ship-hull, .ship-fins, .ship-dark { stroke-linejoin: round; }
+.ship-dark { fill: color-mix(in srgb, var(--ship-color) 26%, #0a0f22); stroke: #050817; stroke-width: 1.2; }
+.ship-light { fill: color-mix(in srgb, var(--ship-color) 30%, #fff); stroke: #050817; stroke-width: 1; }
+.ship-line { fill: none; stroke: #050817; stroke-width: 1; stroke-linecap: round; opacity: .5; }
+.ship-cannon { fill: none; stroke: color-mix(in srgb, var(--ship-color) 55%, #fff); stroke-width: 1.6; stroke-linecap: round; }
+.ship-glow { fill: var(--glow); filter: drop-shadow(0 0 2.5px var(--glow)); }
+.ship-glow-line { fill: none; stroke: var(--glow); stroke-width: 2.4; stroke-linecap: round; filter: drop-shadow(0 0 2.5px var(--glow)); }
+
+/* ---------- situação de prioridade ---------- */
+
+[data-rank="0"] { --rank-color: var(--danger); }
+[data-rank="1"] { --rank-color: var(--state-ready); }
+[data-rank="2"] { --rank-color: var(--state-new); }
+[data-rank="3"] { --rank-color: var(--state-finished); }
+
+.ship-badge { color: var(--rank-color); }
+.badge-disc { fill: #0b1226; stroke: currentColor; stroke-width: 1.5; }
+.badge-pulse { fill: none; stroke: currentColor; stroke-width: 2; opacity: 0; }
+
+/* A nave mais urgente chama atenção enquanto espera na órbita */
+.ship[data-state="READY"] .ship-badge[data-rank="0"] .badge-pulse {
+    animation: badge-pulse 1.2s ease-out infinite;
+}
+
+.data-table tr.row-main th,
+.data-table tr.row-main td {
+    padding-bottom: 1px;
+    border-bottom: 0;
+}
+
+.data-table tr.row-context td {
+    padding-top: 0;
+    padding-bottom: 7px;
+    font-size: 12px;
+    white-space: normal;
+}
+
+.context {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--rank-color);
+}
+
+.context b {
+    font-weight: 600;
+}
+
+.context-text {
+    color: var(--muted);
+}
+
+.row-NEW .context, .row-FINISHED .context {
+    opacity: .6;
+}
+
+.hud-item[hidden] {
+    display: none;
+}
+
+.hud-item.is-waiting .hud-value {
+    color: var(--danger);
+}
+
+/* ---------- efeitos sobre a nave ---------- */
+
+.fx { pointer-events: none; }
+.fx-scorch { fill: none; stroke: #050817; stroke-width: 1.8; stroke-linejoin: round; opacity: .7; }
+.fx-spark { fill: #ffd866; filter: drop-shadow(0 0 2px #ff9a3a); animation: spark 1.1s linear infinite; }
+.fx-aura { fill: #7dff6a; fill-opacity: .13; stroke: #9dff8a; stroke-opacity: .7; stroke-dasharray: 2 5; animation: aura 2.4s ease-in-out infinite; }
+.fx-spore { fill: #b6ff9c; animation: spark 1.8s linear infinite; }
+.fx-puff { fill: #e8f4ff; opacity: 0; animation: puff 1.5s ease-out infinite; }
+
+/* Chegada com rastro de salto, só nos universos temáticos */
+.ship-trail { stroke: var(--glow); stroke-width: 3; stroke-linecap: round; opacity: 0; }
+
+:root[data-universe]:not([data-universe="padrao"]) .ship.is-arriving .ship-warp {
+    animation: warp-in var(--move-ms) cubic-bezier(.2, .7, .2, 1);
+}
+
+:root[data-universe]:not([data-universe="padrao"]) .ship.is-arriving .ship-trail {
+    animation: trail var(--move-ms) ease-out;
+}
+
+@keyframes badge-pulse {
+    0% { opacity: .9; transform: scale(1); }
+    100% { opacity: 0; transform: scale(2.3); }
+}
+
+@keyframes spark {
+    0%, 60%, 100% { opacity: 0; }
+    10% { opacity: 1; }
+    30% { opacity: .2; }
+    45% { opacity: .9; }
+}
+
+@keyframes aura {
+    0%, 100% { opacity: .45; transform: scale(.9); }
+    50% { opacity: 1; transform: scale(1.04); }
+}
+
+@keyframes puff {
+    0% { opacity: .9; transform: translate(0, 0); }
+    100% { opacity: 0; transform: translate(-9px, -13px); }
+}
+
+@keyframes warp-in {
+    0% { transform: scaleX(3.4); opacity: .15; }
+    60% { opacity: 1; }
+    100% { transform: scaleX(1); }
+}
+
+@keyframes trail {
+    0% { opacity: .9; }
+    100% { opacity: 0; }
+}
+
+/* ---------- Star Wars ---------- */
+
+:root[data-universe="starwars"] {
+    --bg: #05060c;
+    --panel: #0e1019;
+    --panel-2: #171a27;
+    --line: #2c3149;
+    --accent: #ffe04a;
+    --scene-bg: #04050b;
+    --glow: #9fdcff;
+    --hull-base: #d4d9e4;
+    --hull-tint: 42%;
+}
+
+.sun-a { fill: #fff1c4; filter: drop-shadow(0 0 14px #ffd98a); }
+.sun-b { fill: #ffb680; filter: drop-shadow(0 0 10px #ff9a5a); }
+
+.ds-sphere { fill: #3a4052; stroke: #8a93a8; stroke-width: 2; }
+.ds-line { fill: none; stroke: #232836; stroke-width: 1.2; opacity: .8; }
+.ds-trench { fill: none; stroke: #171b26; stroke-width: 2.2; }
+.ds-light { fill: #ffe9a8; opacity: .5; }
+.ds-dish { fill: #2a2f3e; stroke: #8a93a8; stroke-width: 1.8; }
+.ds-dish-inner { fill: #1b1f2b; stroke: #5d667c; stroke-width: 1.2; }
+.ds-dish-core { fill: #7dff8a; filter: drop-shadow(0 0 3px #7dff8a); }
+.ds-shade { fill: #02030a; opacity: .42; }
+
+:root[data-universe="starwars"] .planet { fill: #2a2013; }
+:root[data-universe="starwars"] .planet-rim { stroke: #7c5f36; }
+:root[data-universe="starwars"] .hub { fill: #1b1f2b; stroke: #8a93a8; }
+:root[data-universe="starwars"] .hub-core { fill: #0c0f18; stroke: #5d667c; }
+
+/* ---------- Halo ---------- */
+
+:root[data-universe="halo"] {
+    --bg: #050d12;
+    --panel: #0c1820;
+    --panel-2: #12242e;
+    --line: #23404e;
+    --accent: #5fe3c0;
+    --scene-bg: #040b11;
+    --glow: #7fdcff;
+    --hull-base: #98a3b0;
+    --hull-tint: 45%;
+}
+
+.ring-far { fill: none; stroke: #5a7896; stroke-width: 4; opacity: .4; }
+.ring-near { fill: none; stroke: #40566e; stroke-width: 12; opacity: .6; }
+.ring-land { fill: none; stroke: #7fc9a0; stroke-width: 5; stroke-dasharray: 26 8 9 16 40 12; opacity: .45; }
+
+.fr-plate { fill: #232c3a; stroke: #8fa2b8; stroke-width: 1.5; stroke-linejoin: round; }
+.fr-glow { stroke: var(--accent); stroke-width: 2; stroke-linecap: round; filter: drop-shadow(0 0 3px var(--accent)); }
+.fr-beacon { fill: var(--accent); filter: drop-shadow(0 0 4px var(--accent)); }
+
+:root[data-universe="halo"] .planet { fill: #141a3a; }
+:root[data-universe="halo"] .planet-rim { stroke: #4856a0; }
+:root[data-universe="halo"] .hub { fill: #232c3a; stroke: #8fa2b8; stroke-linejoin: round; }
+:root[data-universe="halo"] .hub-core { fill: #101824; stroke: #5b6f86; stroke-linejoin: round; }
+:root[data-universe="halo"] .hub-ring { stroke: var(--accent); opacity: .55; }
+
+/* ---------- Real (ISS) ---------- */
+
+:root[data-universe="real"] {
+    --accent: #8ec5ff;
+    --scene-bg: #02040c;
+    --glow: #ffd9a0;
+    --hull-base: #f2f4f8;
+    --hull-tint: 30%;
+}
+
+.continent { fill: #2f6b3c; opacity: .85; }
+.cloud { fill: none; stroke: #fff; stroke-width: 6; stroke-linecap: round; opacity: .28; }
+.atmosphere { fill: none; stroke: #7fc4ff; stroke-width: 9; opacity: .14; }
+
+.iss-truss { fill: #8b93a6; stroke: #050817; stroke-width: 1; }
+.iss-lattice { stroke: #050817; stroke-width: 1; opacity: .5; }
+.iss-radiator { fill: #dfe4ee; stroke: #6f7a92; stroke-width: 1; }
+.iss-seam { stroke: #6f7a92; stroke-width: 1; }
+
+:root[data-universe="real"] .planet { fill: #0c3b72; }
+:root[data-universe="real"] .planet-rim { stroke: #7fc4ff; stroke-width: 2.5; }
+:root[data-universe="real"] .solar { fill: #1a2f6e; stroke: #c9973f; stroke-width: 1; }
+:root[data-universe="real"] .solar-grid { stroke: #c9973f; }
+:root[data-universe="real"] .station-module { fill: #cfd5e2; stroke: #6f7a92; }
+:root[data-universe="real"] .hub { fill: #cfd5e2; stroke: #6f7a92; }
+:root[data-universe="real"] .hub-core { fill: #9aa3b8; stroke: #6f7a92; }
+
+/* ---------- Alien ---------- */
+
+:root[data-universe="alien"] {
+    --bg: #060908;
+    --panel: #0d1311;
+    --panel-2: #141d1a;
+    --line: #25352f;
+    --text: #dcf5d6;
+    --muted: #86a595;
+    --accent: #9dff8a;
+    --scene-bg: #040706;
+    --glow: #ffb347;
+    --hull-base: #7a828a;
+    --hull-tint: 40%;
+}
+
+.band-a { fill: #3b3a22; opacity: .8; }
+.band-b { fill: #2b3320; opacity: .8; }
+
+.sev-tower { fill: #1a1f22; stroke: #5f6d68; stroke-width: 1.5; stroke-linejoin: round; }
+.sev-bridge { fill: #14181b; stroke: #5f6d68; stroke-width: 1.2; }
+.sev-seam { stroke: #2c3438; stroke-width: 1.5; }
+.sev-mast { stroke: #5f6d68; stroke-width: 1.5; stroke-linecap: round; }
+.sev-window { fill: #ffd76a; opacity: .75; }
+.sev-hazard { fill: none; stroke: #e0b83a; stroke-width: 3; stroke-dasharray: 6 5; opacity: .8; }
+
+:root[data-universe="alien"] .planet { fill: #23261a; }
+:root[data-universe="alien"] .planet-rim { stroke: #5c5a34; }
+:root[data-universe="alien"] .hub { fill: #1a1f22; stroke: #7d8b84; }
+:root[data-universe="alien"] .hub-core { fill: #0b0e0f; stroke: #5f6d68; }
+
+/* Terminal de bordo: letras de largura fixa nos títulos e linhas de varredura sobre a cena */
+:root[data-universe="alien"] .brand h1,
+:root[data-universe="alien"] .panel h2 {
+    font-family: ui-monospace, Consolas, monospace;
+}
+
+:root[data-universe="alien"] .scene-wrap::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(to bottom, transparent 0 3px, rgba(157, 255, 138, .035) 3px 4px);
+    pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fx-spark, .fx-aura, .fx-spore, .fx-puff, .badge-pulse, .ship.is-arriving .ship-warp, .ship.is-arriving .ship-trail {
+        animation: none !important;
+    }
+}

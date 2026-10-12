@@ -143,7 +143,7 @@ button, select {
 
 .layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 410px;
+    grid-template-columns: minmax(0, 1fr) 440px;
     grid-template-areas:
         "controls controls"
         "scene    ships"
@@ -294,7 +294,7 @@ select {
 
 .scene-wrap {
     position: relative;
-    background: #050817;
+    background: var(--scene-bg);
 }
 
 #scene, .scene-svg {
@@ -358,6 +358,8 @@ select {
 .scene-label { fill: var(--text); font-size: 15px; font-weight: 600; }
 .scene-sublabel { fill: var(--muted); font-size: 12px; }
 .scene-legend text { fill: var(--muted); font-size: 12px; }
+.scene-legend .legend-aging { display: none; }
+[data-algorithm="priority"] .scene-legend .legend-aging { display: inline; }
 
 /* estação */
 .station-strut { stroke: #55648f; stroke-width: 4; stroke-linecap: round; }
@@ -378,7 +380,7 @@ select {
 .port-free { fill: var(--muted); font-size: 12px; transition: opacity .3s; }
 .port[data-busy="true"] .port-slot,
 .port[data-busy="true"] .port-free { opacity: 0; }
-.port-label { fill: var(--text); font-size: 13px; font-weight: 600; }
+.port-label { fill: var(--text); font-size: 13px; font-weight: 600; paint-order: stroke; stroke: var(--scene-bg); stroke-width: 3px; stroke-linejoin: round; }
 .port-pulse { fill: none; stroke: var(--danger); stroke-width: 3; opacity: 0; }
 .port-pulse.is-pulsing { animation: pulse .9s ease-out; }
 
@@ -399,7 +401,8 @@ select {
     transition: none;
 }
 
-.ship-hull { fill: var(--ship-color); stroke: #050817; stroke-width: 1.2; }
+/* --hull-tint e --hull-base vêm de universe.css: no universo padrão o casco é a cor pura da nave */
+.ship-hull { fill: color-mix(in srgb, var(--ship-color) var(--hull-tint), var(--hull-base)); stroke: #050817; stroke-width: 1.2; }
 .ship-fins { fill: color-mix(in srgb, var(--ship-color) 55%, #050817); stroke: #050817; stroke-width: 1.5; stroke-linejoin: round; }
 .ship-engine { fill: #2a3558; stroke: #050817; stroke-width: 1.5; }
 .ship-stripe { stroke: #050817; stroke-width: 2; opacity: .45; }
@@ -508,6 +511,20 @@ select {
 
 .ships-panel h2:not(:first-child) {
     margin-top: 18px;
+}
+
+/* Ao lado da cena, o registro de eventos ocupa a altura que sobrar na coluna, em vez de um tamanho fixo */
+@media (min-width: 1101px) {
+    .ships-panel {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ships-panel .event-log {
+        flex: 1 1 88px;
+        min-height: 88px;
+        max-height: none;
+    }
 }
 
 /* ---------- registro de eventos ---------- */
@@ -696,6 +713,15 @@ select {
 #metrics-table tbody tr.is-active th,
 #metrics-table tbody tr.is-active td {
     background: var(--panel-2);
+}
+
+#metrics-table th, #metrics-table td {
+    padding-right: 4px;
+    padding-left: 4px;
+}
+
+#metrics-table thead th {
+    vertical-align: bottom;
 }
 
 #metrics-table td.is-best {
