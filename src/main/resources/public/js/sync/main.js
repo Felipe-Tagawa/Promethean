@@ -53,6 +53,7 @@ const pump = new EventPump(onBatch, Number(els.pace.value));
 const counts = {race: {...DEFAULT_COUNTS.race}, deadlock: {...DEFAULT_COUNTS.deadlock}};
 
 let source = null;
+let syncChoice = true; // o que a pessoa escolheu no botão; vale quando ele não está travado
 let state = null;
 let phase = 'idle'; // idle | running | ended
 let accepting = false; // só aceita eventos depois do SYNC_START da execução atual
@@ -71,7 +72,10 @@ async function init() {
             : 'Modo demonstração: simulador da tela';
 
         els.scenario.forEach(radio => radio.addEventListener('change', resetToPreview));
-        els.sync.addEventListener('change', resetToPreview);
+        els.sync.addEventListener('change', () => {
+            syncChoice = els.sync.checked;
+            resetToPreview();
+        });
         els.recovery.addEventListener('change', resetToPreview);
         els.pace.addEventListener('change', () => pump.setGap(Number(els.pace.value)));
         els.run.addEventListener('click', () => (phase === 'running' ? stop() : start()));
@@ -86,20 +90,42 @@ async function init() {
     }
 }
 
+// ---------- Ajustes ao que o servidor executa hoje (seção 8 de docs/frontend/README.md) ----------
+// Valem só com o servidor. No modo demonstração o simulador da tela cobre todas as combinações.
+
+/**
+ * No servidor, o cenário de deadlock sempre roda com as travas: ele ignora sync=false.
+ * A tela trava o botão em "ligado" para não mostrar um estado que o backend não executa.
+ */
+function isSyncLocked(scenario) {
+    return source.mode === 'server' && scenario === 'deadlock';
+}
+
+/**
+ * No servidor, o deadlock só é confiável com no máximo uma nave por braço:
+ * com naves a mais, o anel pode não se formar e a recuperação pode nunca terminar.
+ * Quando o backend tratar esses casos, basta devolver null aqui.
+ */
+function serverShipCap(scenario) {
+    return source.mode === 'server' && scenario === 'deadlock' ? counts.deadlock.arms : null;
+}
+
 /** A combinação escolhida nos controles, já dentro dos limites do cenário. */
 function config() {
     const scenario = els.scenario.find(radio => radio.checked).value;
     return normalize({
         scenario,
-        sync: els.sync.checked,
+        sync: isSyncLocked(scenario) ? true : syncChoice,
         recovery: els.recovery.value,
-        ships: counts[scenario].ships,
+        ships: Math.min(counts[scenario].ships, limitsOf('ships', scenario).max),
         arms: counts[scenario].arms,
     });
 }
 
 function limitsOf(kind, scenario) {
-    return kind === 'ships' ? LIMITS.ships : LIMITS.arms[scenario];
+    if (kind === 'arms') return LIMITS.arms[scenario];
+    const cap = serverShipCap(scenario);
+    return {min: LIMITS.ships.min, max: cap === null ? LIMITS.ships.max : Math.min(LIMITS.ships.max, cap)};
 }
 
 function changeCount(kind, delta) {
@@ -107,6 +133,8 @@ function changeCount(kind, delta) {
     const {scenario} = config();
     const {min, max} = limitsOf(kind, scenario);
     counts[scenario][kind] = Math.min(max, Math.max(min, counts[scenario][kind] + delta));
+    // Tirar um braço pode baixar o teto de naves
+    counts[scenario].ships = Math.min(counts[scenario].ships, limitsOf('ships', scenario).max);
     resetToPreview();
 }
 
@@ -244,6 +272,14 @@ function render(effects, animate) {
 
 function renderControls(current) {
     const running = phase === 'running';
+    const syncLocked = isSyncLocked(current.scenario);
+    const syncSwitch = els.sync.closest('.switch');
+    els.sync.checked = current.sync; // travado mostra "ligado"; ao destravar volta a escolha da pessoa
+    els.sync.disabled = syncLocked;
+    syncSwitch.classList.toggle('is-locked', syncLocked);
+    syncSwitch.title = syncLocked
+        ? 'O servidor só executa o deadlock com o sincronismo ligado: sem trava ninguém espera, então não há deadlock.'
+        : '';
     els.syncLabel.textContent = current.sync ? 'Ligado' : 'Desligado';
     els.recoveryField.hidden = !(current.scenario === 'deadlock' && current.sync);
 
@@ -253,6 +289,11 @@ function renderControls(current) {
         stepper.less.disabled = running || current[kind] <= min;
         stepper.more.disabled = running || current[kind] >= max;
     }
+    const capped = serverShipCap(current.scenario) !== null && current.ships >= limitsOf('ships', current.scenario).max
+        && current.ships < LIMITS.ships.max;
+    steppers.ships.more.title = capped
+        ? 'No servidor, o deadlock aceita no máximo uma nave por braço. Aumente os braços primeiro.'
+        : '';
 
     els.runIcon.setAttribute('d', running ? STOP_ICON : PLAY_ICON);
     els.runLabel.textContent = running ? 'Parar' : (phase === 'ended' ? 'Repetir' : 'Iniciar');
