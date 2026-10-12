@@ -1,36 +1,40 @@
 package br.inatel.promethean;
 
+import java.util.List;
+
 import br.inatel.promethean.model.SpaceCraft;
 import br.inatel.promethean.model.Workload;
 import br.inatel.promethean.scheduler.FcfsScheduler;
+import br.inatel.promethean.scheduler.PriorityScheduler;
+import br.inatel.promethean.scheduler.SJFScheduler;
 import br.inatel.promethean.scheduler.Scheduler;
-import br.inatel.promethean.simulation.SimulationEngine;
 import br.inatel.promethean.server.WebSocketServer;
-
-
-import java.util.List;
+import br.inatel.promethean.simulation.ConsoleGanttPrinter;
+import br.inatel.promethean.simulation.SimulationEngine;
+import br.inatel.promethean.simulation.SimulationMetrics;
 
 public class Main {
     public static void main(String[] args) {
-
-        new WebSocketServer().start(7070);
+        int port = System.getenv("PORT") != null ? Integer.parseInt(System.getenv("PORT")) : 7070;
+        new WebSocketServer().start(port);
 
         Workload workload = Workload.reference();
-        Scheduler scheduler = new FcfsScheduler();
 
-        // O motor altera as naves que recebe; a lista fica guardada para ler os resultados depois
-        List<SpaceCraft> spacecrafts = workload.freshCopy();
+        List<Scheduler> schedulers = List.of(
+            new FcfsScheduler(),
+            new SJFScheduler(),
+            new PriorityScheduler()
+        );
 
-        SimulationEngine engine = new SimulationEngine(scheduler, 1, spacecrafts);
-        engine.addListener(event -> System.out.println(event));
+        ConsoleGanttPrinter printer = new ConsoleGanttPrinter();
 
-        System.out.println("Escalonador: " + scheduler.name());
-        engine.run();
+        System.out.println("Simulação de Escalonamento de CPU");
 
-        // Tick em que cada nave atracou pela primeira vez e tick em que terminou
-        System.out.println("Resultado:");
-        for (SpaceCraft s : spacecrafts) {
-            System.out.println(s.getId() + ": de " + s.getStartTime() + " a " + s.getFinishTime());
+        for (Scheduler s: schedulers) {
+        List<SpaceCraft> copy = workload.freshCopy();
+            SimulationEngine engine = new SimulationEngine(s, 1, copy);
+            SimulationMetrics metrics = engine.run();
+            printer.print(metrics);
         }
     }
 }
