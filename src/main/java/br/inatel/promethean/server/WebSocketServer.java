@@ -8,12 +8,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import br.inatel.promethean.engine.SimulationEvent;
 import br.inatel.promethean.engine.SimulationListener;
+import br.inatel.promethean.engine.SimulationRecorder;
+import br.inatel.promethean.exception.InvalidValueException;
+import br.inatel.promethean.scheduler.Scheduler;
+import br.inatel.promethean.scheduler.SchedulerCatalog;
 import br.inatel.promethean.sync.SyncScenarioManager;
 import io.javalin.Javalin;
 import io.javalin.http.staticfiles.Location;
 import io.javalin.websocket.WsContext;
 
-import java.util.List;
 import java.util.Set;
 import java.util.Map;
 
@@ -46,12 +49,9 @@ public class WebSocketServer implements SimulationListener {
             });
         });
 
+        // Lista de algoritmos para o seletor da tela; vem do mesmo catálogo que cria os escalonadores
         this.app.get("/api/scheduling/algorithms", ctx -> {
-        ctx.json(List.of(
-            Map.of("key", "fcfs", "name", "FCFS"),
-            Map.of("key", "sjf", "name", "Shortest Job First"),
-            Map.of("key", "priority", "name", "Priority with Aging")
-        ));
+            ctx.json(SchedulerCatalog.list());
         });
 
         this.app.post("/api/sync/start", ctx -> {
@@ -71,23 +71,20 @@ public class WebSocketServer implements SimulationListener {
             ctx.status(200);
         });
 
+        // Roda o motor com o algoritmo pedido e devolve a gravação completa (seção 3.2 do contrato da tela).
+        // Sem o parâmetro "algorithm" roda o FCFS; com uma chave que não existe responde 400.
         this.app.get("/api/scheduling", ctx -> {
-            String algorithm = ctx.queryParam("algorithm");
-            String fileName = switch (algorithm != null ? algorithm.toLowerCase() : "fcfs") {
-                case "sjf" -> "/public/exemplos/escalonamento-sjf.json";
-                case "priority" -> "/public/exemplos/escalonamento-priority.json";
-                default -> "/public/exemplos/escalonamento-fcfs.json";
-            };
-
-            // Lê o JSON correspondente e devolve para o front
-            try (var is = getClass().getResourceAsStream(fileName)) {
-                if (is != null) {
-                    ctx.contentType("application/json").result(is.readAllBytes());
-                } else {
-                    ctx.status(404);
-                }
+            Scheduler scheduler;
+            try {
+                scheduler = SchedulerCatalog.create(ctx.queryParam("algorithm"));
+            } catch (InvalidValueException e) {
+                // Chave desconhecida: o erro é de quem pediu, não do servidor
+                ctx.status(400).json(Map.of("error", e.getMessage()));
+                return;
             }
-    });
+
+            ctx.json(SimulationRecorder.recordSimulation(scheduler));
+        });
     }
 
     @Override
