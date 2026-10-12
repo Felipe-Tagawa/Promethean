@@ -53,7 +53,31 @@ public class SimulationEngine {
             advanceTime();
         }
 
-        return null;
+        double totalWaiting = 0;
+        double totalTurnaround = 0;
+        double totalResponse = 0;
+
+        for (SpaceCraft s: all) {
+            totalWaiting += s.getWaitingTime();
+            totalTurnaround += s.getTurnaroundTime();
+            totalResponse += s.getResponseTime();
+        }
+
+        int n = all.size();
+        double avgWaiting = totalWaiting / n;
+        double avgTurnaround = totalTurnaround / n;
+        double avgResponse = totalResponse / n;
+        
+        double throughput = (clock > 0) ? (double) n / clock : 0.0;
+        
+        return new SimulationMetrics(
+            scheduler.name(),
+            avgWaiting,
+            avgTurnaround,
+            avgResponse,
+            throughput,
+            (double) contextSwitches
+        );
     }
 
     private void admitArrivals(){
