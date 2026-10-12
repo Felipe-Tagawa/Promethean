@@ -53,8 +53,8 @@ public class SyncScenarioManager {
         startEvent.put("resources", List.of(Map.of("id", "ROBOTIC_ARMS", "capacity", arms)));
         emit(startEvent);
 
-        // Recursos compartilhados
-        java.util.concurrent.Semaphore semaphore = new java.util.concurrent.Semaphore(arms, true);
+        // Recursos compartilhados protegidos por SubSystemResourceManager
+        SubSystemResourceManager resourceManager = new SubSystemResourceManager(arms);
         Set<String> currentlyUsing = ConcurrentHashMap.newKeySet();
         AtomicInteger collisions = new AtomicInteger(0);
         AtomicInteger actualCargo = new AtomicInteger(0);
@@ -75,7 +75,7 @@ public class SyncScenarioManager {
                     emit(Map.of("type", "REQUEST", "spaceCraftId", shipId, "resourceId", "ROBOTIC_ARMS"));
 
                     if (sync) {
-                        semaphore.acquire(); // Bloqueio real via Semáforo!
+                        resourceManager.acquire(ResourceType.ROBOTIC_ARM); // Bloqueio real via SubSystemResourceManager!
                     }
 
                     // A nave pegou o braço
@@ -105,7 +105,7 @@ public class SyncScenarioManager {
                     currentlyUsing.remove(shipId);
                     emit(Map.of("type", "RELEASE", "spaceCraftId", shipId, "resourceId", "ROBOTIC_ARMS"));
                     if (sync) {
-                        semaphore.release();
+                        resourceManager.release(ResourceType.ROBOTIC_ARM);
                     }
 
                     emit(Map.of("type", "DONE", "spaceCraftId", shipId));
@@ -173,7 +173,7 @@ public class SyncScenarioManager {
         List<String> cycleShips = shipIds.subList(0, ringSize);
 
         // Barreira para que apenas as naves do anel peguem o primeiro braço juntas antes de pedir o segundo
-        java.util.concurrent.CyclicBarrier barrier = new java.util.concurrent.CyclicBarrier(ringSize);
+        AirLockBarrier barrier = new AirLockBarrier(ringSize);
 
         List<Thread> shipThreads = new ArrayList<>();
 
@@ -193,7 +193,7 @@ public class SyncScenarioManager {
 
                     // Aguarda apenas as naves do anel pegarem o primeiro braço juntas
                     if (index < ringSize) {
-                        barrier.await();
+                        barrier.awaitEqualization();
                         Thread.sleep(300);
                     }
 

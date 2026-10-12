@@ -21,7 +21,7 @@ public class Workload {
     }
 
     /**
-     * Carga de conferência: exemplo clássico de SJF dos livros de SO.
+     * Carga de referência: exemplo clássico de SJF dos livros de SO.
      * Os resultados esperados dela são calculados à mão e comparados com a saída do simulador
      *
      * N1: chegada 0, burst 8, prioridade 3
@@ -40,13 +40,13 @@ public class Workload {
         ));
     }
 
-    // Todo: Implementar os Métodos
+    // Métodos opcionais previstos na arquitetura
 
-    public Workload fromFiles(String path){
+    public static Workload fromFile(String path){
         return null;
     }
 
-    public Workload random(int n, long seed){
+    public static Workload random(int n, long seed){
         return null;
     }
 

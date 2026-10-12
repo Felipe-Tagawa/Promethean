@@ -8,7 +8,11 @@ public class AirLockBarrier {
     private CyclicBarrier barrier;
 
     public AirLockBarrier () {
-        this.barrier = new CyclicBarrier(2); // Barreira abre com 2 threads
+        this(2);
+    }
+
+    public AirLockBarrier(int parties) {
+        this.barrier = new CyclicBarrier(parties);
     }
 
     public void awaitEqualization() throws InterruptedException, BrokenBarrierException {
