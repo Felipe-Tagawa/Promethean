@@ -15,6 +15,7 @@ Este documento define **o que o servidor envia e o que o front espera receber**.
 7. [Ordem de entrega e de corte](#7-ordem-de-entrega-e-de-corte)
 8. [Pontos em aberto](#8-pontos-em-aberto)
 9. [Universos](#9-universos)
+10. [Ameaças](#10-ameaças)
 
 ---
 
@@ -30,6 +31,7 @@ Este documento define **o que o servidor envia e o que o front espera receber**.
 | Visual | Cena espacial estilizada |
 | Comparação | Um algoritmo por vez na cena, com tabela de métricas e Gantts empilhados |
 | Universos | Um seletor troca a estação, as naves, o fundo e o contexto das prioridades. É só aparência: não muda o contrato (seção 9) |
+| Ameaças | Um seletor aplica um imprevisto ao escalonamento. O padrão é "Nenhuma"; com uma ameaça, quem recalcula é a tela, não o servidor (seção 10) |
 
 ---
 
@@ -385,3 +387,91 @@ A escolha fica guardada no navegador e vale nas duas páginas. `?universo=chave`
 Para criar um universo: uma entrada em `UNIVERSES`, os cascos em `hulls.js`, a estação e o céu em `stations.js` e um bloco de cores em `universe.css`. Os cascos precisam caber na caixa do casco original (x de -41 a 37, y de -20 a 20), porque as duas cenas posicionam naves e rótulos contando com esse tamanho.
 
 Os desenhos são silhuetas feitas à mão em SVG, sem imagens nem logos de terceiros, e a tela continua funcionando sem internet.
+
+---
+
+## 10. Ameaças
+
+O seletor **Ameaça**, na página de escalonamento, aplica um imprevisto à simulação: uma nave é atingida, destruída ou a porta fica interditada. É um extra da tela, feito para a apresentação.
+
+**O padrão é "Nenhuma", e com ele nada muda.** A tela reproduz a gravação do servidor, como descrito na seção 3. A escolha não fica salva: a página sempre abre em "Nenhuma".
+
+**Com uma ameaça ativa, quem calcula é a tela.** O servidor não conhece ameaças, então a simulação é refeita por `js/engine.js`, uma cópia em JavaScript do `SimulationEngine` e dos três escalonadores. O aviso do canto de cima troca "Dados do servidor" por "Simulação da tela: nome da ameaça".
+
+**A cópia é conferida a cada carga da página.** Antes de liberar o seletor, a tela roda o motor dela sem ameaça e compara os eventos com os da gravação recebida, nos três algoritmos. Se houver qualquer diferença (por exemplo, uma mudança na regra de aging do servidor), o seletor fica desabilitado.
+
+### 10.1 Efeitos
+
+| Efeito | O que acontece | Conceito de SO |
+|---|---|---|
+| `priority` | A nave passa na frente de todas, inclusive da que já era a mais urgente | Mudança de prioridade em tempo de execução |
+| `burst` | A nave precisa de mais ticks de porta | O processo passa a precisar de mais CPU |
+| `destroy` | A nave sai da órbita ou da porta sem terminar | Processo encerrado à força |
+| `port` | A porta fica interditada por alguns ticks | Núcleo de CPU fora de serviço |
+
+Regras decididas:
+
+- **Uma ameaça por vez**, aplicada igual aos três algoritmos, para a comparação continuar justa.
+- **Roteiro fixo.** Cada ameaça acontece sempre no mesmo tick e escolhe o alvo pelo papel da nave (a menos urgente, a atracada), não pelo nome. O resultado se repete e dá para voltar no tempo.
+- **Nave destruída fica fora das médias.** Espera, turnaround e resposta consideram só as naves que terminaram; as perdidas aparecem em um contador.
+- **Porta interditada: a nave atracada fica parada.** Ela não avança nem perde o lugar, e não conta troca de contexto. As naves na órbita continuam esperando (e envelhecendo, no algoritmo de prioridade).
+- **Diferença para a simulação sem ameaça.** Embaixo de cada métrica aparece quanto ela mudou.
+
+No FCFS e no SJF, uma nave que vira prioridade máxima continua esperando, porque esses algoritmos ignoram a prioridade. Só no de Prioridade ela fura a fila.
+
+### 10.2 Lista por universo
+
+| Universo | Ameaça | Tick | O que acontece |
+|---|---|---|---|
+| Padrão | Chuva de asteroides | 4 | A nave menos urgente vira prioridade máxima |
+| | Tempestade solar | 6 | Porta interditada por 4 ticks |
+| | Pane no motor | 5 | A nave de maior burst precisa de mais 4 ticks |
+| | Colisão | 6 | A segunda nave mais urgente é destruída |
+| Star Wars | Ataque rebelde | 5 | O Star Destroyer vira prioridade máxima e precisa de mais 2 ticks |
+| | Torpedo de prótons | 7 | O caça TIE é destruído |
+| | Sabotagem do raio trator | 3 | Porta interditada por 3 ticks |
+| Halo | Flood se espalha | 4, 8, 12… | A cada 4 ticks, a primeira nave da órbita ainda não infectada vira prioridade máxima |
+| | Raio de vitrificação | 6 | A nave atracada é destruída |
+| | Pulso do anel | 5 | Porta interditada por 3 ticks; cada nave na órbita precisa de mais 1 tick |
+| Real (ISS) | Detritos espaciais | 4 | A nave atracada precisa de mais 3 ticks |
+| | Tempestade solar | 5 | Porta interditada por 5 ticks |
+| | Missão abortada | 6 | A nave menos urgente deixa a órbita sem atracar |
+| Alien | Organismo à solta | 7 | A nave atracada precisa de mais 5 ticks |
+| | Autodestruição | 3 | A nave mais urgente é destruída |
+| | Quarentena da estação | 4 | Porta interditada por 4 ticks |
+
+Se o alvo não estiver na órbita nem atracado no tick marcado, a ameaça espera o primeiro tick em que ele estiver.
+
+### 10.3 Eventos de ameaça
+
+Só existem nas gravações do motor da tela; o servidor não os envia.
+
+```json
+{"tick": 4, "type": "THREAT", "spaceCraftId": "N3", "portId": null,
+ "effects": [{"kind": "priority", "priority": 0}],
+ "text": "N3 foi atingida pelos asteroides e virou prioridade máxima"}
+```
+
+| `kind` em `effects` | Campos | Observação |
+|---|---|---|
+| `priority` | `priority` | Nova prioridade base da nave |
+| `burst` | `amount`, `burstTime` | Quanto cresceu e o novo total |
+| `destroy` | `style` | `explode` ou `abort`; `portId` vem preenchido se a nave estava atracada |
+| `port-down` | `until` | Tick em que a porta reabre; `spaceCraftId` é `null` |
+| `port-up` | | A porta voltou a operar |
+
+A nave destruída fica no estado `KILLED`, que só existe na tela.
+
+### 10.4 Onde fica cada coisa
+
+| Arquivo | Conteúdo |
+|---|---|
+| `js/threats.js` | A lista de ameaças de cada universo: tick, alvo, efeitos, frase do registro e como é desenhada |
+| `js/engine.js` | A cópia do motor e dos escalonadores, e a aplicação das ameaças |
+| `js/threatfx.js` | As animações passageiras (asteroides, caça inimigo, raio, explosão, ondas) |
+| `js/timeline.js` | Leitura dos eventos `THREAT`: nave perdida, porta interditada, burst alterado |
+| `css/universe.css` | O estilo do seletor, da porta interditada e das marcas no Gantt |
+
+Para criar uma ameaça basta uma entrada em `js/threats.js`; os efeitos e as animações já existentes são reaproveitados.
+
+Se as regras do motor Java mudarem, `js/engine.js` precisa mudar junto. Enquanto isso não for feito, a conferência descrita acima mantém o seletor desabilitado, e o resto da tela continua funcionando.
