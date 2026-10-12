@@ -19,11 +19,11 @@ Para tornar os conceitos abstratos visuais e intuitivos, cada componente da esta
 O ciclo de vida de uma nave obedece à máquina de estados clássica de SO:
 
 ```
-[ NEW ] ──> [ READY ] <─── Preempção / Fim de Quantum ───┐
-                │                                         │
-             Despacho (Scheduler)                         │
-                ▼                                         │
-           [ RUNNING ] ───────────────────────────────────┘
+[ NEW ] ──> [ READY ] <─── Preempção ────────────────────────┐
+                │                                            │
+             Despacho (Scheduler)                            │
+                ▼                                            │
+           [ RUNNING ] ──────────────────────────────────────┘
                 │
          Requisita Recurso (I/O)
                 ▼
@@ -50,11 +50,11 @@ O simulador permite executar a mesma carga de trabalho (workload) sob diferentes
 
 **Prevenção de Starvation (Aging)**: Para evitar que módulos científicos de baixa prioridade fiquem indefinidamente na fila, a cada $k$ ciclos de clock na fila de espera, a prioridade da nave recebe um incremento dinâmico (boost).
 
-### B. Round Robin (RR)
+### B. Shortest Job First (SJF)
 
-**Política**: Todas as naves recebem fatias iguais de tempo de acoplamento (Quantum). Ao expirar o quantum sem finalizar o burst, a nave cede a porta e retorna para o fim da fila de prontos.
+**Política**: Atendimento não-preemptivo priorizando naves com menor tempo de execução (`burstTime`). Em caso de empate de burst, o desempate é feito pela ordem cronológica de chegada na órbita (`arrivalTime`).
 
-**Foco**: Distribuição justa de tempo e redução da variância no tempo de resposta.
+**Foco**: Minimização do tempo médio de espera entre as abordagens não-preemptivas.
 
 ### C. First-Come, First-Served (FCFS) — Baseline de Controle
 
@@ -82,10 +82,10 @@ Ao final de cada execução, o simulador consolida:
 ## 6. Estrutura de Diretórios
 
 ```
-src/main/java/br/inatel/orbital/
+src/main/java/br/inatel/promethean/
 ├── Main.java                        # Ponto de entrada da aplicação
 ├── model/                           # Entidades de domínio (Spacecraft, ProcessState, etc.)
-├── scheduler/                       # Estratégias de escalonamento (Priority, RR, FCFS)
+├── scheduler/                       # Estratégias de escalonamento (Priority, SJF, FCFS)
 ├── sync/                            # Fila concorrente, semáforos e barreiras
 └── server/                          # Servidor WebSocket / Javalin para a interface
 ```
