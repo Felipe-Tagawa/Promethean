@@ -8,15 +8,21 @@ import java.util.Deque;
 
 public class SJFScheduler implements Scheduler {
 
-    private Deque<SpaceCraft> queue;
+    private final Deque<SpaceCraft> queue;
+    private final boolean preemptive;
 
     public SJFScheduler() {
-        queue = new ArrayDeque<SpaceCraft>();
+        this(false);
+    }
+
+    public SJFScheduler(boolean preemptive) {
+        this.queue = new ArrayDeque<SpaceCraft>();
+        this.preemptive = preemptive;
     }
 
     @Override
     public String name() {
-        return "Shortest Job First";
+        return preemptive ? "SJF Preemptivo" : "Shortest Job First";
     }
 
     /**
@@ -42,8 +48,10 @@ public class SJFScheduler implements Scheduler {
     }
 
     /**
-     * Escolhe a nave de menor burstTime e a remove da fila de prontos.
-     * Empate de burst: ganha quem tiver menor arrivalTime (ordem cronológica de chegada).
+     * Escolhe a nave com menor tempo e a remove da fila de prontos.
+     * No modo preemptivo, considera o tempo restante (remainingTime).
+     * No modo não preemptivo, considera a duração total (burstTime).
+     * Empate: ganha quem tiver menor arrivalTime (ordem cronológica de chegada).
      *
      * @param now tick em que a escolha ocorre (não usado pelo SJF)
      * @return nave escolhida, ou null se a fila estiver vazia
@@ -54,10 +62,13 @@ public class SJFScheduler implements Scheduler {
             SpaceCraft min = null;
 
             for (SpaceCraft c : queue) {
-                if (min == null || c.getBurstTime() < min.getBurstTime()) {
+                int cTime = preemptive ? c.getRemainingTime() : c.getBurstTime();
+                int minTime = (min != null) ? (preemptive ? min.getRemainingTime() : min.getBurstTime()) : 0;
+
+                if (min == null || cTime < minTime) {
                     min = c;
                 }
-                else if (c.getBurstTime() == min.getBurstTime()
+                else if (cTime == minTime
                         && c.getArrivalTime() < min.getArrivalTime()) {
                     min = c;
                 }
@@ -72,11 +83,23 @@ public class SJFScheduler implements Scheduler {
 
     @Override
     public boolean shouldPreempt(SpaceCraft running, DockingPort port, int now) {
+        if (!preemptive) {
+            return false;
+        }
+        for (SpaceCraft s : queue) {
+            if (s.getRemainingTime() < running.getRemainingTime()) {
+                return true;
+            }
+        }
         return false;
     }
 
     @Override
     public void onTick(int now) {
 
+    }
+
+    public boolean isPreemptive() {
+        return preemptive;
     }
 }

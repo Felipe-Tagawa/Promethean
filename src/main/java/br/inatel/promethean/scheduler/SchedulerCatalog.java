@@ -16,7 +16,7 @@ public final class SchedulerCatalog {
     public static final String DEFAULT_KEY = "fcfs";
 
     // Para acrescentar um algoritmo: incluir a chave aqui e o caso correspondente em create()
-    private static final List<String> KEYS = List.of("fcfs", "sjf", "priority");
+    private static final List<String> KEYS = List.of("fcfs", "sjf", "sjf-preemptive", "priority");
 
     /**
      * Um algoritmo do catálogo
@@ -56,6 +56,7 @@ public final class SchedulerCatalog {
         return switch (normalized) {
             case "fcfs" -> new FcfsScheduler();
             case "sjf" -> new SJFScheduler();
+            case "sjf-preemptive", "sjf_preemptive", "srtf" -> new SjfPreemptiveScheduler();
             case "priority" -> new PriorityScheduler();
             default -> throw new InvalidValueException(
                     "Unknown scheduling algorithm '" + key + "'. Available: " + String.join(", ", KEYS) + ".");

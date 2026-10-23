@@ -57,9 +57,10 @@ O simulador permite executar a mesma carga de trabalho (*workload*) sob diferent
 * **Prevenção de Inanição (*Aging*)**: A cada $k$ ciclos de clock na fila de espera, a prioridade da nave recebe um incremento dinâmico (*boost*), impedindo *starvation* de processos menos prioritários.
 
 ### B. Shortest Job First (SJF)
-* **Política**: Abordagem não-preemptiva que prioriza a nave com menor tempo de execução restante (`burstTime`). 
-* **Desempate**: Em caso de empate no burst, o desempate é feito pela ordem cronológica de chegada na órbita (`arrivalTime`).
-* **Foco**: Minimização do tempo médio de espera entre abordagens não-preemptivas.
+* **Política Não-preemptiva**: Prioriza a nave com menor tempo total de execução (`burstTime`), executando até a conclusão sem interrupções.
+* **Política Preemptiva (SRTF)**: Se uma nova nave chega à órbita com tempo de execução restante (`remainingTime`) menor do que o da nave atualmente atracada, ocorre preempção: a nave atracada volta para a fila de prontos e a mais curta assume a porta.
+* **Desempate**: Em caso de empate, o desempate é feito pela ordem cronológica de chegada na órbita (`arrivalTime`).
+* **Foco**: Minimização do tempo médio de espera.
 
 ### C. First-Come, First-Served (FCFS) — Baseline
 * **Política**: Atendimento estritamente por ordem cronológica de chegada na órbita de espera (FIFO).
@@ -100,12 +101,12 @@ Para a carga de referência oficial ($N_1$ a $N_4$):
 * **N3**: Chegada 2, Burst 9, Prioridade 4
 * **N4**: Chegada 3, Burst 5, Prioridade 2
 
-| Métrica | FCFS | SJF | Prioridade com Aging |
-|---|:---:|:---:|:---:|
-| **Tempo Médio de Espera ($W_m$)** | 8,75 | 7,75 | **6,50** |
-| **Tempo Médio de Turnaround ($TAT_m$)** | 15,25 | 14,25 | **13,00** |
-| **Tempo Médio de Resposta ($RT_m$)** | 8,75 | 7,75 | **2,75** |
-| **Trocas de Contexto** | 0 | 0 | 1 |
+| Métrica | FCFS | SJF | SJF Preemptivo | Prioridade com Aging |
+|---|:---:|:---:|:---:|:---:|
+| **Tempo Médio de Espera ($W_m$)** | 8,75 | 7,75 | **6,50** | **6,50** |
+| **Tempo Médio de Turnaround ($TAT_m$)** | 15,25 | 14,25 | **13,00** | **13,00** |
+| **Tempo Médio de Resposta ($RT_m$)** | 8,75 | 7,75 | 4,25 | **2,75** |
+| **Trocas de Contexto** | 0 | 0 | 1 | 1 |
 
 ---
 
@@ -152,7 +153,7 @@ mvn exec:java -Dexec.mainClass="br.inatel.promethean.Main"
 ```
 
 Assim que a aplicação iniciar:
-* O console exibirá a comparação estatística detalhada dos 3 algoritmos.
+* O console exibirá a comparação estatística detalhada dos 4 algoritmos.
 * Acesse no navegador:
   * **Escalonamento & Gantt:** `http://localhost:7070`
   * **Sincronismo & Deadlock:** `http://localhost:7070/sincronismo.html`

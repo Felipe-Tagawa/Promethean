@@ -82,6 +82,7 @@ Em qualquer erro de parâmetro, o servidor responde `400` com `{"error": "mensag
 [
   {"key": "fcfs", "name": "FCFS"},
   {"key": "sjf", "name": "Shortest Job First"},
+  {"key": "sjf-preemptive", "name": "SJF Preemptivo"},
   {"key": "priority", "name": "Priority with Aging"}
 ]
 ```
@@ -293,6 +294,7 @@ Para o deadlock acontecer sempre, todas as naves precisam pegar o primeiro braç
 |---|---|---|
 | [`escalonamento-fcfs.json`](../../src/main/resources/public/exemplos/escalonamento-fcfs.json) | FCFS na carga de referência | N1 0–8, N2 8–12, N3 12–21, N4 21–26; espera média 8,75 |
 | [`escalonamento-sjf.json`](../../src/main/resources/public/exemplos/escalonamento-sjf.json) | SJF não preemptivo na carga de referência | N1 0–8, N2 8–12, N4 12–17, N3 17–26; espera média 7,75 |
+| [`escalonamento-sjf-preemptivo.json`](../../src/main/resources/public/exemplos/escalonamento-sjf-preemptivo.json) | SJF preemptivo (SRTF) na carga de referência | N1 0–1, N2 1–5, N4 5–10, N1 10–17, N3 17–26; espera média 6,5 |
 | [`escalonamento-priority.json`](../../src/main/resources/public/exemplos/escalonamento-priority.json) | Prioridade preemptiva com aging, com um `PREEMPT` | N1 0–1, N2 1–5, N4 5–10, N1 10–17, N3 17–26; espera média 6,5 |
 | [`sincronismo-corrida-desligado.json`](../../src/main/resources/public/exemplos/sincronismo-corrida-desligado.json) | `race` com `sync=false`, 3 naves e 1 braço | 2 colisões; carga 187 de 300 |
 | [`sincronismo-corrida-ligado.json`](../../src/main/resources/public/exemplos/sincronismo-corrida-ligado.json) | `race` com `sync=true`, 3 naves e 1 braço | 0 colisões; carga 300 de 300 |

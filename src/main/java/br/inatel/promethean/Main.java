@@ -7,6 +7,7 @@ import br.inatel.promethean.model.Workload;
 import br.inatel.promethean.scheduler.FcfsScheduler;
 import br.inatel.promethean.scheduler.PriorityScheduler;
 import br.inatel.promethean.scheduler.SJFScheduler;
+import br.inatel.promethean.scheduler.SjfPreemptiveScheduler;
 import br.inatel.promethean.scheduler.Scheduler;
 import br.inatel.promethean.server.WebSocketServer;
 import br.inatel.promethean.engine.SimulationEngine;
@@ -24,6 +25,7 @@ public class Main {
         List<Scheduler> schedulers = List.of(
             new FcfsScheduler(),
             new SJFScheduler(),
+            new SjfPreemptiveScheduler(),
             new PriorityScheduler()
         );
 

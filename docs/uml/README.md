@@ -209,6 +209,7 @@ classDiagram
 |---|---|---|---|
 | FCFS | `ArrayDeque` (FIFO) | sempre `false` | nada |
 | SJF | `ArrayDeque` (menor `burstTime`) | sempre `false` | nada |
+| SJF Preemptivo | `ArrayDeque` (menor `remainingTime`) | existe na fila alguém com tempo restante menor que o da nave atual | nada |
 | Prioridade + Aging | `List` (procura o menor `currentPriority`) | existe na fila alguém com prioridade menor que a da nave atual | a cada `agingInterval` ticks em READY, chama `age(agingBoost)` |
 
 > Por que `List` e não `PriorityQueue` na prioridade? O `PriorityQueue` não reordena um item cuja prioridade mudou depois de inserido. Com aging, a prioridade muda o tempo todo.
@@ -536,6 +537,7 @@ classDiagram
 | `Scheduler` | scheduler | Escalonador de curto prazo | Interface Strategy com `selectNext`, `shouldPreempt`, `onTick` |
 | `FcfsScheduler` | scheduler | FCFS | Implementado com `ArrayDeque` (FIFO) |
 | `SJFScheduler` | scheduler | SJF não-preemptivo | Implementado com menor `burstTime` e desempate por chegada |
+| `SjfPreemptiveScheduler` | scheduler | SJF preemptivo (SRTF) | Implementado com menor `remainingTime` e preempção |
 | `PriorityScheduler` | scheduler | Prioridade preemptiva + aging | Implementado com `List`, preempção e envelhecimento periódico |
 | `SchedulerCatalog` | scheduler | Escolha da política | Lista os algoritmos e cria o escalonador a partir da chave recebida pela rota |
 | `SimulationEngine` | engine | Dispatcher + clock | Motor com admissão, despacho, execução e cálculo de métricas |
