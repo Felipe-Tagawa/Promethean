@@ -3,6 +3,7 @@
 const DEMO_ALGORITHMS = [
     {key: 'fcfs', name: 'FCFS', file: 'exemplos/escalonamento-fcfs.json'},
     {key: 'sjf', name: 'Shortest Job First', file: 'exemplos/escalonamento-sjf.json'},
+    {key: 'sjf-preemptive', name: 'SJF Preemptivo', file: 'exemplos/escalonamento-sjf-preemptivo.json'},
     {key: 'priority', name: 'Priority with Aging', file: 'exemplos/escalonamento-priority.json'},
 ];
 

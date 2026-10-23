@@ -52,6 +52,25 @@ class Sjf extends Fcfs {
     }
 }
 
+class SjfPreemptive extends Fcfs {
+    /** Menor tempo restante; no empate, quem chegou antes. */
+    selectNext() {
+        let min = null;
+        for (const ship of this.queue) {
+            if (min === null || ship.remaining < min.remaining
+                || (ship.remaining === min.remaining && ship.arrivalTime < min.arrivalTime)) {
+                min = ship;
+            }
+        }
+        this.remove(min);
+        return min;
+    }
+
+    shouldPreempt(running) {
+        return this.queue.some(ship => ship.remaining < running.remaining);
+    }
+}
+
 class Priority extends Fcfs {
     constructor(agingInterval = 5, agingBoost = 1) {
         super();
@@ -87,7 +106,12 @@ class Priority extends Fcfs {
     }
 }
 
-const SCHEDULERS = {fcfs: Fcfs, sjf: Sjf, priority: Priority};
+const SCHEDULERS = {
+    fcfs: Fcfs,
+    sjf: Sjf,
+    'sjf-preemptive': SjfPreemptive,
+    priority: Priority,
+};
 
 /** Algoritmos que esta cópia sabe simular, pelas chaves do catálogo do servidor. */
 export const SUPPORTED = Object.keys(SCHEDULERS);
