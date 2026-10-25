@@ -1,0 +1,13 @@
+{
+  "key": "real",
+  "title": "Tráfego da ISS",
+  "universe": "real",
+  "description": "Naves reais com chegadas espaçadas: quase não há fila, a porta fica ociosa e a política escolhida quase não muda o resultado.",
+  "spacecrafts": [
+    {"id": "SOYUZ", "name": "Soyuz MS-22", "arrivalTime": 0, "burstTime": 3, "basePriority": 1},
+    {"id": "DRAGON", "name": "Crew Dragon Endurance", "arrivalTime": 2, "burstTime": 4, "basePriority": 2},
+    {"id": "CYGNUS", "name": "Cygnus NG-20", "arrivalTime": 9, "burstTime": 3, "basePriority": 4},
+    {"id": "ATLANTIS", "name": "Space Shuttle Atlantis", "arrivalTime": 11, "burstTime": 5, "basePriority": 3},
+    {"id": "PROGRESS", "name": "Progress MS-27", "arrivalTime": 20, "burstTime": 2, "basePriority": 4}
+  ]
+}

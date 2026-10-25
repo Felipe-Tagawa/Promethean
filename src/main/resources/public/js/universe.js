@@ -150,6 +150,7 @@ export function bindUniverseSelect(select, onChange) {
     const initial = currentUniverse();
     for (const universe of UNIVERSES) select.add(new Option(universe.name, universe.key));
     select.value = initial.key;
+    select.dataset.title = select.title; // a dica original volta quando o seletor é destravado
     writeStorage(initial.key); // um universo vindo da URL passa a valer também na outra página
     applyToPage(initial);
 
@@ -168,4 +169,25 @@ export function bindUniverseSelect(select, onChange) {
         onChange(universe);
     });
     return initial;
+}
+
+/**
+ * Trava o seletor num universo, ou destrava com key = null.
+ * Uma carga temática pertence a um universo: travar garante que os nomes das naves combinam com os desenhos.
+ * Se o universo muda, o aviso de troca é o mesmo de quando a pessoa escolhe no seletor.
+ * @param select o <select> ligado por bindUniverseSelect
+ * @param key universo em que travar, ou null para destravar
+ * @param reason dica mostrada enquanto o seletor está travado
+ */
+export function lockUniverse(select, key, reason = '') {
+    if (key) {
+        const universe = findUniverse(key);
+        if (select.value !== universe.key) {
+            select.value = universe.key;
+            select.dispatchEvent(new Event('change'));
+        }
+    }
+    select.disabled = Boolean(key);
+    select.title = key ? reason : (select.dataset.title ?? '');
+    select.closest('.field')?.classList.toggle('is-locked', Boolean(key));
 }

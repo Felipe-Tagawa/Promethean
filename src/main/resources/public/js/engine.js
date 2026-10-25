@@ -122,7 +122,7 @@ export const SUPPORTED = Object.keys(SCHEDULERS);
  * Roda uma simulação inteira e devolve a gravação no formato da seção 3.2 do contrato.
  * @param algorithm chave do algoritmo (fcfs, sjf ou priority)
  * @param name nome do algoritmo, copiado para a gravação
- * @param spacecrafts carga: [{id, arrivalTime, burstTime, basePriority}]
+ * @param spacecrafts carga: [{id, name, arrivalTime, burstTime, basePriority}]; name é opcional
  * @param ports ids das portas
  * @param threat opcional: ameaça de threats.js, aplicada durante a simulação
  */
@@ -349,7 +349,9 @@ export function simulate({algorithm, name, spacecrafts, ports: portIds, threat =
         version: 1,
         algorithm: name,
         ports: ports.map(p => p.id),
-        spacecrafts: spacecrafts.map(s => ({id: s.id, arrivalTime: s.arrivalTime, burstTime: s.burstTime, basePriority: s.basePriority})),
+        spacecrafts: spacecrafts.map(s => ({
+            id: s.id, name: s.name ?? null, arrivalTime: s.arrivalTime, burstTime: s.burstTime, basePriority: s.basePriority,
+        })),
         events,
         metrics: {
             algorithm: name,

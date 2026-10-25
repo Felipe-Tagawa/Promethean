@@ -135,7 +135,8 @@ export class Scene {
         const warp = svg('g', {class: 'ship-warp'}, rot); // esticado na chegada, no efeito de salto
         svg('line', {class: 'ship-trail', x1: -60, y1: 0, x2: -230, y2: 0}, warp);
         const hull = drawHull(warp, SHIP_SCALE, design);
-        svg('title', {}, hull).textContent = HULL_NAMES[design] ?? '';
+        // A dica mostra o nome real da nave, quando a carga tem um; senão, o tipo do casco
+        svg('title', {}, hull).textContent = ship.name ?? HULL_NAMES[design] ?? '';
         if (context?.effect) drawEffect(hull, context.effect);
         // Marca de quem foi atingida por uma ameaça; fica escondida até isso acontecer
         const spreads = this.timeline.threat?.visual.kind === 'spread';
@@ -153,10 +154,12 @@ export class Scene {
 
     /** Selo com o ícone da situação de prioridade, ao lado do nome da nave. */
     buildBadge(parent, ship, context) {
+        // O selo fica logo depois do id, que é centralizado: ids longos (até 8 letras) empurram o selo para a direita
+        const offset = Math.max(27, Math.ceil(ship.id.length * 5.6) + 12);
         const badge = svg('g', {
             class: 'ship-badge',
             'data-rank': Math.min(ship.priorityRank, 3),
-            transform: 'translate(27 -36)',
+            transform: `translate(${offset} -36)`,
         }, parent);
         svg('title', {}, badge).textContent = `Prioridade ${ship.basePriority} · ${context.label}`;
         svg('circle', {class: 'badge-pulse', r: 10}, badge);

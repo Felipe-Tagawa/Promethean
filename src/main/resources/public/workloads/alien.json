@@ -1,0 +1,13 @@
+{
+  "key": "alien",
+  "title": "Sinal de LV-426",
+  "universe": "alien",
+  "description": "Uma nave longa e pouco urgente atraca primeiro e chegam naves cada vez mais urgentes: preempção em cascata, com várias trocas de contexto.",
+  "spacecrafts": [
+    {"id": "DERELICT", "name": "Derelict de LV-426", "arrivalTime": 0, "burstTime": 10, "basePriority": 4},
+    {"id": "SULACO", "name": "USS Sulaco", "arrivalTime": 2, "burstTime": 4, "basePriority": 3},
+    {"id": "NARCISS", "name": "Narcissus", "arrivalTime": 4, "burstTime": 2, "basePriority": 2},
+    {"id": "NOSTROMO", "name": "USCSS Nostromo", "arrivalTime": 6, "burstTime": 2, "basePriority": 1},
+    {"id": "JUGGERN", "name": "Juggernaut", "arrivalTime": 8, "burstTime": 3, "basePriority": 4}
+  ]
+}

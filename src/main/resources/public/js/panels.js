@@ -71,8 +71,12 @@ export function renderShips(tbody, timeline, frame, universe) {
         dot.style.background = ship.color;
         // O burst só muda quando uma ameaça obriga a nave a ficar mais tempo na porta
         const grew = now.burst !== ship.burstTime;
+        // O nome real fica embaixo do id, menor; sem nome, só o id, como antes
+        const label = ship.name
+            ? [dot, document.createTextNode(ship.id), el('span', {className: 'ship-name', text: ship.name})]
+            : [dot, document.createTextNode(ship.id)];
         const main = el('tr', {className: `row-${now.state}`}, [
-            el('th', {}, [dot, document.createTextNode(ship.id)]),
+            el('th', {title: ship.name ?? undefined}, label),
             el('td', {}, [el('b', {className: `state state-${now.state}`, text: now.state})]),
             el('td', {className: 'num', text: String(ship.arrivalTime)}),
             el('td', {

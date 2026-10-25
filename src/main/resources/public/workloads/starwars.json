@@ -1,0 +1,13 @@
+{
+  "key": "starwars",
+  "title": "Bloqueio imperial",
+  "universe": "starwars",
+  "description": "Um Star Destroyer lento atraca primeiro: efeito comboio. Só os algoritmos preemptivos tiram a Millennium Falcon da fila.",
+  "spacecrafts": [
+    {"id": "DESTROY", "name": "Star Destroyer", "arrivalTime": 0, "burstTime": 12, "basePriority": 3},
+    {"id": "FALCON", "name": "Millennium Falcon", "arrivalTime": 1, "burstTime": 3, "basePriority": 1},
+    {"id": "RED5", "name": "X-wing Red Five", "arrivalTime": 2, "burstTime": 2, "basePriority": 2},
+    {"id": "TIE", "name": "TIE Fighter", "arrivalTime": 3, "burstTime": 1, "basePriority": 4},
+    {"id": "RED2", "name": "X-wing Red Two", "arrivalTime": 4, "burstTime": 2, "basePriority": 2}
+  ]
+}

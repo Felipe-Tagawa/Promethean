@@ -42,12 +42,15 @@ export class Gantt {
 
             const track = div('gantt-track', this.tracks);
             const colors = new Map(entry.timeline.ships.map(s => [s.id, s.color]));
+            const shipNames = new Map(entry.timeline.ships.map(s => [s.id, s.name]));
             for (const segment of entry.timeline.segments) {
                 const seg = div('gantt-seg', track);
                 seg.style.left = this.percent(segment.start);
                 seg.style.width = this.percent(segment.end - segment.start);
                 seg.style.setProperty('--ship-color', colors.get(segment.spaceCraftId));
-                seg.title = `${segment.spaceCraftId}: tick ${segment.start} a ${segment.end}`;
+                // A barra mostra o id curto; a dica, também o nome real
+                const shipName = shipNames.get(segment.spaceCraftId);
+                seg.title = `${segment.spaceCraftId}${shipName ? ` (${shipName})` : ''}: tick ${segment.start} a ${segment.end}`;
                 const label = document.createElement('span');
                 label.textContent = segment.spaceCraftId;
                 seg.append(label);

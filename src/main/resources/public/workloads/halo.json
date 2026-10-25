@@ -1,0 +1,14 @@
+{
+  "key": "halo",
+  "title": "Evacuação Forerunner",
+  "universe": "halo",
+  "description": "A Phaeton é a menos urgente e a mais longa: no SJF ela fica para o fim (starvation); na Prioridade, o aging a coloca antes da Spirit.",
+  "spacecrafts": [
+    {"id": "DAWN", "name": "Forward Unto Dawn", "arrivalTime": 0, "burstTime": 2, "basePriority": 1},
+    {"id": "ECHO419", "name": "Pelican Echo 419", "arrivalTime": 0, "burstTime": 3, "basePriority": 2},
+    {"id": "PHAETON", "name": "Phaeton Promethean", "arrivalTime": 1, "burstTime": 5, "basePriority": 4},
+    {"id": "PHANTOM", "name": "Phantom do Covenant", "arrivalTime": 2, "burstTime": 3, "basePriority": 3},
+    {"id": "PELICAN2", "name": "Pelican de resgate", "arrivalTime": 4, "burstTime": 3, "basePriority": 2},
+    {"id": "SPIRIT", "name": "Spirit do Covenant", "arrivalTime": 7, "burstTime": 3, "basePriority": 3}
+  ]
+}
