@@ -24,16 +24,28 @@ public final class SimulationRecorder {
     }
 
     /**
-     * Simula a carga de referência com o escalonador recebido e devolve a gravação completa.
-     * Cada chamada usa uma cópia nova das naves e uma lista de eventos própria,
-     * então dois pedidos ao mesmo tempo não interferem um no outro
+     * Simula a carga de referência com o escalonador recebido e devolve a gravação completa
      *
      * @param scheduler escalonador recém-criado; não pode ter sido usado em outra simulação
      * @return gravação com naves, portas, eventos e métricas
      */
     public static SimulationRecording recordSimulation(Scheduler scheduler) {
-        // O motor altera as naves que recebe; a mesma lista vai na gravação
-        List<SpaceCraft> spacecrafts = Workload.reference().freshCopy();
+        return recordSimulation(scheduler, Workload.reference());
+    }
+
+    /**
+     * Simula a carga recebida com o escalonador e devolve a gravação completa.
+     * Cada chamada usa uma cópia nova das naves e uma lista de eventos própria,
+     * então dois pedidos ao mesmo tempo não interferem um no outro, e a carga pode ser
+     * gravada com vários algoritmos: todos recebem exatamente as mesmas naves
+     *
+     * @param scheduler escalonador recém-criado; não pode ter sido usado em outra simulação
+     * @param workload carga a simular; não é alterada
+     * @return gravação com a carga, naves, portas, eventos e métricas
+     */
+    public static SimulationRecording recordSimulation(Scheduler scheduler, Workload workload) {
+        // O motor altera as naves que recebe; por isso a cópia, que depois vai na gravação
+        List<SpaceCraft> spacecrafts = workload.freshCopy();
         SimulationEngine engine = new SimulationEngine(scheduler, PORT_COUNT, spacecrafts);
 
         // Listener que só guarda: a lista fica completa quando o run() termina
@@ -42,6 +54,8 @@ public final class SimulationRecorder {
 
         SimulationMetrics metrics = engine.run();
 
-        return new SimulationRecording(FORMAT_VERSION, scheduler.name(), engine.getPortIds(), spacecrafts, events, metrics);
+        SimulationRecording.WorkloadInfo info = new SimulationRecording.WorkloadInfo(
+                workload.getKey(), workload.getTitle(), workload.getUniverse(), workload.getSeed());
+        return new SimulationRecording(FORMAT_VERSION, scheduler.name(), info, engine.getPortIds(), spacecrafts, events, metrics);
     }
 }

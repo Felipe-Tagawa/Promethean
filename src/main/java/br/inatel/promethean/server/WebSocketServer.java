@@ -10,6 +10,8 @@ import br.inatel.promethean.engine.SimulationEvent;
 import br.inatel.promethean.engine.SimulationListener;
 import br.inatel.promethean.engine.SimulationRecorder;
 import br.inatel.promethean.exception.InvalidValueException;
+import br.inatel.promethean.model.Workload;
+import br.inatel.promethean.model.WorkloadCatalog;
 import br.inatel.promethean.scheduler.Scheduler;
 import br.inatel.promethean.scheduler.SchedulerCatalog;
 import br.inatel.promethean.sync.SyncScenarioManager;
@@ -71,20 +73,47 @@ public class WebSocketServer implements SimulationListener {
             ctx.status(200);
         });
 
-        // Roda o motor com o algoritmo pedido e devolve a gravação completa (seção 3.2 do contrato da tela).
-        // Sem o parâmetro "algorithm" roda o FCFS; com uma chave que não existe responde 400.
+        // Lista das cargas de arquivo para o seletor da tela; vem do mesmo índice que a tela lê sem servidor
+        this.app.get("/api/scheduling/workloads", ctx -> {
+            ctx.json(WorkloadCatalog.list());
+        });
+
+        // Roda o motor com o algoritmo e a carga pedidos e devolve a gravação completa (seção 3.2 do contrato da tela).
+        // Sem "algorithm" roda o FCFS; sem "workload", a carga de referência; "workload=aleatoria" exige "seed" e "ships".
+        // Qualquer parâmetro inválido responde 400.
         this.app.get("/api/scheduling", ctx -> {
             Scheduler scheduler;
+            Workload workload;
             try {
                 scheduler = SchedulerCatalog.create(ctx.queryParam("algorithm"));
-            } catch (InvalidValueException e) {
-                // Chave desconhecida: o erro é de quem pediu, não do servidor
+                Long seed = parseNumber(ctx.queryParam("seed"), "seed");
+                Long ships = parseNumber(ctx.queryParam("ships"), "ships");
+                workload = WorkloadCatalog.create(ctx.queryParam("workload"), seed, ships == null ? null : Math.toIntExact(ships));
+            } catch (InvalidValueException | ArithmeticException e) {
+                // Chave desconhecida ou número inválido: o erro é de quem pediu, não do servidor
                 ctx.status(400).json(Map.of("error", e.getMessage()));
                 return;
             }
 
-            ctx.json(SimulationRecorder.recordSimulation(scheduler));
+            ctx.json(SimulationRecorder.recordSimulation(scheduler, workload));
         });
+    }
+
+    /**
+     * Lê um parâmetro numérico da URL
+     *
+     * @return o número, ou null se o parâmetro não veio
+     * @throws InvalidValueException se o parâmetro veio e não é um número inteiro
+     */
+    private static Long parseNumber(String value, String name) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException e) {
+            throw new InvalidValueException("Parameter '" + name + "' must be a whole number, got '" + value + "'.");
+        }
     }
 
     @Override

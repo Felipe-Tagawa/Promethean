@@ -39,6 +39,26 @@
 <main class="layout">
 
     <section class="panel controls" aria-label="Controles da simulação">
+        <label class="field workload-field">
+            <span>Carga</span>
+            <select id="workload"></select>
+        </label>
+
+        <div class="random-fields" id="random-fields" role="group" aria-label="Carga aleatória" hidden>
+            <label class="field">
+                <span>Semente</span>
+                <input type="number" id="seed" min="0" step="1" inputmode="numeric"
+                       title="A mesma semente gera sempre a mesma carga">
+            </label>
+            <label class="field">
+                <span>Naves</span>
+                <input type="number" id="ships" min="3" max="8" step="1" inputmode="numeric" title="De 3 a 8 naves">
+            </label>
+            <button type="button" id="btn-dice" class="icon-btn" aria-label="Sortear outra semente" title="Sortear outra semente">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" fill="none"/><circle cx="8.5" cy="8.5" r="1.2"/><circle cx="15.5" cy="8.5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="8.5" cy="15.5" r="1.2"/><circle cx="15.5" cy="15.5" r="1.2"/></svg>
+            </button>
+        </div>
+
         <label class="field">
             <span>Algoritmo</span>
             <select id="algorithm"></select>
@@ -87,6 +107,10 @@
                 <title id="scene-title">Estação orbital com a órbita de espera e as portas de acoplamento</title>
             </svg>
             <div class="hud">
+                <div class="hud-item">
+                    <span class="hud-label">Carga</span>
+                    <span class="hud-value" id="hud-workload">—</span>
+                </div>
                 <div class="hud-item">
                     <span class="hud-label">Algoritmo</span>
                     <span class="hud-value" id="hud-algorithm">—</span>

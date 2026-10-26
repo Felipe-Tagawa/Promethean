@@ -4,6 +4,9 @@ import java.util.List;
 
 import br.inatel.promethean.model.SpaceCraft;
 import br.inatel.promethean.model.Workload;
+import br.inatel.promethean.model.WorkloadCatalog;
+import br.inatel.promethean.scheduler.SchedulerCatalog;
+import br.inatel.promethean.engine.SimulationRecorder;
 import br.inatel.promethean.scheduler.FcfsScheduler;
 import br.inatel.promethean.scheduler.PriorityScheduler;
 import br.inatel.promethean.scheduler.SJFScheduler;
@@ -42,7 +45,13 @@ public class Main {
             printer.print(metrics);
         }
 
-        System.out.println("  Demonstração: SharedReadyQueue (Produtor/Consumidor)");
+        // Todas as cargas de arquivo, cada uma rodada nos mesmos algoritmos: a comparação é justa dentro da carga
+        System.out.println("\n         Comparação por carga (a mesma carga em todos os algoritmos)          ");
+        for (String key : WorkloadCatalog.keys()) {
+            printComparison(Workload.fromFile(key));
+        }
+
+        System.out.println("\n  Demonstração: SharedReadyQueue (Produtor/Consumidor)");
         SharedReadyQueue sharedQueue = new SharedReadyQueue();
         Thread producer = new Thread(() -> {
             try {
@@ -66,5 +75,19 @@ public class Main {
         } catch (InterruptedException ignored) {}
 
         System.out.println("\n[Promethean] Sistema pronto e ouvindo na porta " + port);
+    }
+
+    /**
+     * Imprime uma tabela com as métricas da carga em cada algoritmo do catálogo.
+     * Cada linha usa um escalonador novo e uma cópia nova das naves, então nenhuma simulação interfere na outra
+     */
+    private static void printComparison(Workload workload) {
+        System.out.printf("%n  %s (%s) · %d naves%n", workload.getTitle(), workload.getKey(), workload.getSpacecrafts().size());
+        System.out.printf("    %-22s %8s %11s %9s %7s %8s%n", "Algoritmo", "Espera", "Turnaround", "Resposta", "Trocas", "Vazão");
+        for (SchedulerCatalog.Entry entry : SchedulerCatalog.list()) {
+            SimulationMetrics m = SimulationRecorder.recordSimulation(SchedulerCatalog.create(entry.key()), workload).metrics();
+            System.out.printf("    %-22s %8.2f %11.2f %9.2f %7.0f %8.4f%n", entry.name(),
+                    m.avgWaitingTime(), m.avgTurnaroundTime(), m.avgResponseTime(), m.contextSwitches(), m.throughput());
+        }
     }
 }

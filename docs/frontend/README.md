@@ -16,6 +16,7 @@ Este documento define **o que o servidor envia e o que o front espera receber**.
 8. [Pontos em aberto](#8-pontos-em-aberto)
 9. [Universos](#9-universos)
 10. [Ameaças](#10-ameaças)
+11. [Cargas](#11-cargas)
 
 ---
 
@@ -32,6 +33,7 @@ Este documento define **o que o servidor envia e o que o front espera receber**.
 | Comparação | Um algoritmo por vez na cena, com tabela de métricas e Gantts empilhados |
 | Universos | Um seletor troca a estação, as naves, o fundo e o contexto das prioridades. É só aparência: não muda o contrato (seção 9) |
 | Ameaças | Um seletor aplica um imprevisto ao escalonamento. O padrão é "Nenhuma"; com uma ameaça, quem recalcula é a tela, não o servidor (seção 10) |
+| Cargas | Um seletor escolhe a carga simulada: a de referência, uma por universo, com naves reais do tema, ou uma aleatória com semente. Todos os algoritmos recebem sempre a mesma carga (seção 11) |
 
 ---
 
@@ -63,7 +65,8 @@ flowchart LR
 |---|---|---|
 | `GET /` | servidor → front | Página e arquivos estáticos (`src/main/resources/public/`) |
 | `GET /api/scheduling/algorithms` | servidor → front | Lista de algoritmos disponíveis |
-| `GET /api/scheduling?algorithm=…` | servidor → front | Roda uma simulação e devolve a gravação |
+| `GET /api/scheduling/workloads` | servidor → front | Lista das cargas de arquivo (seção 11) |
+| `GET /api/scheduling?algorithm=…&workload=…` | servidor → front | Roda uma simulação com a carga pedida e devolve a gravação; a aleatória leva também `seed` e `ships` |
 | `POST /api/sync/start?…` | front → servidor | Inicia um cenário de sincronismo |
 | `POST /api/sync/stop` | front → servidor | Interrompe o cenário em andamento |
 | `WS /ws/sync` | servidor → front | Eventos do cenário, um por mensagem |
@@ -93,14 +96,15 @@ Os três algoritmos previstos são FCFS, SJF e Prioridade. A lista pode começar
 
 ### 3.2 Gravação
 
-`GET /api/scheduling?algorithm=sjf` roda o motor com a carga de referência (`Workload.reference()`) e devolve a gravação:
+`GET /api/scheduling?algorithm=sjf&workload=starwars` roda o motor com a carga pedida e devolve a gravação. Sem `workload`, vale a carga de referência (`Workload.reference()`); as cargas estão na seção 11.
 
 | Campo | Tipo | Significado |
 |---|---|---|
 | `version` | número | Versão do contrato. Hoje é `1` |
 | `algorithm` | texto | `Scheduler.name()` do algoritmo usado |
+| `workload` | objeto | A carga simulada: `key`, `title`, `universe` e `seed` (só na aleatória; nas outras, `null`). Com ela, o resultado pode ser reproduzido |
 | `ports` | lista de texto | Ids das portas, na ordem em que aparecem na tela |
-| `spacecrafts` | lista | Naves da carga: `id`, `arrivalTime`, `burstTime`, `basePriority` |
+| `spacecrafts` | lista | Naves da carga: `id`, `name` (nome real, pode ser `null`), `arrivalTime`, `burstTime`, `basePriority` |
 | `events` | lista | Eventos na ordem em que o motor os emitiu (seção 3.3) |
 | `metrics` | objeto | O record `SimulationMetrics`, como o Jackson o serializa |
 
@@ -303,11 +307,11 @@ Para o deadlock acontecer sempre, todas as naves precisam pegar o primeiro braç
 | [`sincronismo-deadlock-timeout.json`](../../src/main/resources/public/exemplos/sincronismo-deadlock-timeout.json) | `deadlock` com `recovery=timeout` | N2 desiste no `TIMEOUT` e tenta de novo; termina em `COMPLETED` |
 | [`sincronismo-deadlock-desligado.json`](../../src/main/resources/public/exemplos/sincronismo-deadlock-desligado.json) | `deadlock` com `sync=false` | Ninguém espera: 2 colisões e nenhum deadlock |
 
-Os arquivos ficam em `src/main/resources/public/exemplos/`, junto do front. Os de escalonamento são uma gravação (seção 3.2) e são carregados pelo modo demonstração. Os de sincronismo são a lista das mensagens do WebSocket, na ordem (seção 4.2), para as quantidades padrão; servem de referência do formato.
+Os arquivos ficam em `src/main/resources/public/exemplos/`, junto do front. Os de escalonamento são uma gravação (seção 3.2) da carga de referência e servem de referência do formato; o modo demonstração não os lê mais, porque passou a simular as cargas (seção 11). Os de sincronismo são a lista das mensagens do WebSocket, na ordem (seção 4.2), para as quantidades padrão; servem de referência do formato.
 
 Os exemplos de escalonamento foram gerados seguindo a ordem do tick do UML e conferem com as contas à mão do plano de trabalho. Os valores de `timeMs`, colisões e carga dos exemplos de sincronismo são ilustrativos: com threads reais, eles variam a cada execução.
 
-**Modo demonstração.** Sem servidor, a tela funciona sozinha: o escalonamento reproduz os arquivos de exemplo, e o sincronismo usa um simulador da própria tela (`js/sync/simulator.js`), que gera os eventos para qualquer quantidade de naves e braços seguindo as regras da seção 4.5. O parâmetro `?demo` na URL força esse modo. Ele serve para desenvolver a tela antes do backend e como plano B na apresentação.
+**Modo demonstração.** Sem servidor, a tela funciona sozinha: o escalonamento simula as cargas de `public/workloads/` com a cópia do motor em `js/engine.js` (a carga aleatória fica de fora, porque a tela não reproduz o sorteio do Java), e o sincronismo usa um simulador da própria tela (`js/sync/simulator.js`), que gera os eventos para qualquer quantidade de naves e braços seguindo as regras da seção 4.5. O parâmetro `?demo` na URL força esse modo. Ele serve para desenvolver a tela antes do backend e como plano B na apresentação.
 
 O simulador não usa threads: é uma conta, que dá sempre o mesmo resultado. As threads reais do servidor não são determinísticas, então a ordem dos eventos pode ser outra, e isso não é erro. Quando os dois divergirem em uma regra, o servidor é a referência e o simulador é ajustado.
 
@@ -350,7 +354,7 @@ Se o backend de uma cena não estiver pronto em 14/10, ela é apresentada no mod
 |---|---|
 | Evento `AGING` | Está no enum, mas ninguém o emite e o evento não carrega a nova prioridade. O front o ignora até isso ser definido |
 | Várias portas | O contrato já suporta (`ports` é uma lista e todo evento tem `portId`), mas a tela desta entrega é desenhada para uma porta |
-| Outras cargas | `GET /api/scheduling` usa sempre a carga de referência. Um parâmetro `workload` pode entrar depois sem quebrar o contrato |
+| Outras cargas | Resolvido: o parâmetro `workload` escolhe a carga, sem quebrar o contrato (seção 11) |
 | `contextSwitches` | Hoje é `double` no record e sai como `1.0`. O front aceita os dois formatos |
 | `resetPriority()` | Decidido: o motor chama na preempção, e não no despacho (nota da seção 5 de [`docs/uml/README.md`](../uml/README.md)). O exemplo `escalonamento-priority.json` segue essa regra e usa o aging padrão do `PriorityScheduler` (intervalo 5, boost 1) |
 | Deadlock com `sync=false` | O servidor ignora o parâmetro nesse cenário e roda com as travas. Enquanto for assim, a tela, no modo servidor, trava o botão de sincronismo em "ligado" quando o cenário é deadlock (`isSyncLocked` em `js/sync/main.js`). No modo demonstração o botão continua livre, porque o simulador cobre o caso |
@@ -485,3 +489,77 @@ A nave destruída fica no estado `KILLED`, que só existe na tela.
 Para criar uma ameaça basta uma entrada em `js/threats.js`; os efeitos e as animações já existentes são reaproveitados.
 
 Se as regras do motor Java mudarem, `js/engine.js` precisa mudar junto. Enquanto isso não for feito, a conferência descrita acima mantém o seletor desabilitado, e o resto da tela continua funcionando.
+
+---
+
+## 11. Cargas
+
+O seletor **Carga**, na página de escalonamento, escolhe o conjunto de naves que chega à estação. A comparação é sempre justa: todos os algoritmos recebem exatamente a mesma carga, cada um com a sua cópia das naves (`Workload.freshCopy()`). Trocar de carga é o que permite ver resultados diferentes.
+
+### 11.1 Arquivos
+
+As cargas fixas ficam em [`src/main/resources/public/workloads/`](../../src/main/resources/public/workloads/), uma por arquivo. O `index.json` lista as chaves na ordem do seletor; o Java (`WorkloadCatalog`) e a tela, no modo demonstração, leem o mesmo índice.
+
+```json
+{
+  "key": "starwars",
+  "title": "Bloqueio imperial",
+  "universe": "starwars",
+  "description": "Um Star Destroyer lento atraca primeiro: efeito comboio...",
+  "spacecrafts": [
+    {"id": "DESTROY", "name": "Star Destroyer", "arrivalTime": 0, "burstTime": 12, "basePriority": 3},
+    {"id": "FALCON", "name": "Millennium Falcon", "arrivalTime": 1, "burstTime": 3, "basePriority": 1}
+  ]
+}
+```
+
+Os campos das naves têm os mesmos nomes da gravação (seção 3.2). O `name` é opcional: sem ele, a tela mostra só o id. Toda carga, venha de arquivo ou do sorteio, é conferida pelo construtor de `Workload`:
+
+| Regra | Por quê |
+|---|---|
+| De 1 a 8 naves | A órbita da tela fica legível até umas 8 naves |
+| Ids únicos, com até 8 caracteres | O id identifica a nave nos eventos e precisa caber nas barras do Gantt e sobre a nave |
+| No máximo 4 níveis de prioridade diferentes | Cada universo tem 4 situações de prioridade (seção 9) |
+
+Para criar uma carga: um arquivo `<chave>.json` na pasta e a chave no `index.json`. Nas cargas de um universo, use os 4 níveis de prioridade: o desenho de cada nave sai do nível dela, então é o nível que faz a Millennium Falcon ser desenhada como a Falcon.
+
+### 11.2 Rotas
+
+`GET /api/scheduling/workloads` devolve o resumo de cada carga de arquivo, na ordem do índice:
+
+```json
+[{"key": "referencia", "title": "Carga de referência", "universe": "padrao", "description": "...", "ships": 4}, ...]
+```
+
+`GET /api/scheduling?algorithm=…&workload=…` simula a carga pedida. Sem `workload`, vale `referencia`. Com `workload=aleatoria`, os parâmetros `seed` (inteiro) e `ships` (de 3 a 8) são obrigatórios. Uma chave fora do índice, um número inválido ou uma carga que quebre as regras respondem `400` com `{"error": "mensagem"}`. A gravação traz o campo `workload` (seção 3.2), com a semente quando houver.
+
+### 11.3 Carga aleatória
+
+`Workload.random(n, seed)` sorteia `n` naves, `R1` a `Rn`, sem nome e sem universo. Para cada nave, nesta ordem: chegada de 0 a 2n, burst de 1 a 10 e prioridade de 1 a 4, com `java.util.Random(seed)`. A mesma semente gera sempre a mesma carga, em qualquer máquina; mudar a ordem dos sorteios mudaria todas as sementes já usadas, e um teste protege isso. Ela só existe com o servidor: a tela não reproduz o sorteio do Java.
+
+### 11.4 Na tela
+
+| Comportamento | Como é |
+|---|---|
+| Seletor | As cargas do índice e, com servidor, "Aleatória (com semente)", que mostra os campos Semente e Naves e um botão que sorteia outra semente |
+| Universo | Numa carga temática, o seletor de universo trava no universo dela, para nomes e desenhos combinarem. Na de referência e na aleatória, fica livre |
+| Nome real | Na tabela de naves, embaixo do id, e nas dicas da nave e do Gantt. Sobre a nave e nas barras do Gantt continua o id curto |
+| HUD | O canto da cena mostra a carga em uso; na aleatória, com a semente |
+| Link | A URL guarda a carga (`?carga=starwars`, ou `?carga=aleatoria&semente=42&naves=5`): abrir o link reproduz a mesma simulação |
+| Ameaças | Valem em qualquer carga. A conferência da seção 10 é refeita a cada troca de carga |
+| Modo demonstração | Simula as cargas do índice com `js/engine.js`; a aleatória não aparece |
+
+### 11.5 As cargas e o que cada uma mostra
+
+Espera média em ticks, na ordem FCFS / SJF / SJF preemptivo / Prioridade com aging:
+
+| Chave | Universo | Naves | O que mostra | Espera média |
+|---|---|---|---|---|
+| `referencia` | Padrão | N1 a N4 | O exemplo clássico dos livros, conferido à mão | 8,75 / 7,75 / 6,50 / 6,50 |
+| `starwars` | Star Wars | 5 | Efeito comboio: o Star Destroyer atraca primeiro, e só os preemptivos tiram a Millennium Falcon da fila (ela espera 11 / 16 / 0 / 0) | 10,40 / 9,40 / 3,00 / 5,00 |
+| `halo` | Halo | 6 | Starvation no SJF: a Phaeton, longa e pouco urgente, fica para o fim; na Prioridade, o aging a adianta (espera 4 / 13 / 13 / 10) | 5,33 / 4,33 / 4,33 / 4,67 |
+| `real` | Real (ISS) | 5 | Naves reais com chegadas espaçadas: quase não há fila, e três algoritmos dão o mesmo resultado | 0,40 / 0,40 / 0,40 / 1,20 |
+| `alien` | Alien | 5 | Preempção em cascata: a Nostromo deixa de esperar (10 / 6 / 2 / 0), ao custo de até 4 trocas de contexto | 7,60 / 6,60 / 3,40 / 4,20 |
+| `destiny` | Destiny | 6 | Bursts iguais: o SJF não tem o que escolher e repete o FCFS; a Prioridade atende o Guardião primeiro | 7,50 / 7,50 / 7,50 / 9,33 |
+
+Esses números são fixados pelos testes de `src/test/java` (`WorkloadComparisonTest`): `mvn test` reproduz todos eles.

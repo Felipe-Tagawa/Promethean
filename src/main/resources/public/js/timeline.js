@@ -15,6 +15,7 @@ export function buildTimeline(recording) {
 
     const ships = recording.spacecrafts.map((s, index) => ({
         id: String(s.id),
+        name: s.name ? String(s.name) : null, // nome real, só para exibir; o id é que identifica a nave
         arrivalTime: Number(s.arrivalTime),
         burstTime: Number(s.burstTime),
         basePriority: Number(s.basePriority),

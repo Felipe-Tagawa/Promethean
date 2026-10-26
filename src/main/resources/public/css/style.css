@@ -215,6 +215,68 @@ select {
     min-width: 230px;
 }
 
+#workload {
+    min-width: 200px;
+}
+
+/* Carga aleatória: semente, número de naves e o dado que sorteia outra semente */
+.random-fields {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.random-fields[hidden] {
+    display: none;
+}
+
+input[type="number"] {
+    width: 96px;
+    height: 36px;
+    padding: 0 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: inherit;
+    font: inherit;
+}
+
+input[type="number"]:hover {
+    border-color: var(--muted);
+}
+
+#ships {
+    width: 64px;
+}
+
+#btn-dice svg {
+    fill: currentColor;
+    stroke: currentColor;
+}
+
+#btn-dice svg path {
+    fill: none;
+}
+
+/* Seletor travado: a carga temática escolhida pertence a um universo */
+.field.is-locked select {
+    border-style: dashed;
+    opacity: .7;
+    cursor: default;
+}
+
+/* Nome real da nave, embaixo do id, na tabela de naves */
+.ship-name {
+    display: block;
+    max-width: 170px;
+    margin-left: 18px;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 400;
+    text-overflow: ellipsis;
+}
+
 .transport {
     display: flex;
     align-items: center;

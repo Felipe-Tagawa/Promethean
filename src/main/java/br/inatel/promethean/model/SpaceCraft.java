@@ -5,7 +5,8 @@ import br.inatel.promethean.exception.InvalidValueException;
 
 public class SpaceCraft {
     /**
-     * Id: Id do processo
+     * Id: Id do processo (curto: é o que aparece nos eventos e no Gantt)
+     * name: nome real da nave, só para exibição; pode ser null (como o PID e o nome do processo no SO)
      * arrivalTime: momento em que o processo fica pronto
      * burstTime: tempo total de CPU que o processo precisa
      * remainingTime: quanto de CPU ainda falta (diminui a cada tick)
@@ -19,6 +20,7 @@ public class SpaceCraft {
      */
 
     private final String id;
+    private final String name;
     private final int arrivalTime, burstTime;
     private int remainingTime;
     private final int basePriority; // Quanto menor, maior prioridade
@@ -26,7 +28,19 @@ public class SpaceCraft {
     private int waitingTime = 0, startTime = -1, finishTime = -1, timeInCurrentState = 0;
     private ProcessState state;
 
+    /**
+     * Nave sem nome real: só o id
+     */
     public SpaceCraft(String id, int arrivalTime, int burstTime, int basePriority) {
+        this(id, null, arrivalTime, burstTime, basePriority);
+    }
+
+    /**
+     * Nave com nome real. As validações ficam só aqui; o construtor sem nome chama este
+     *
+     * @param name nome para exibição (ex.: "Millennium Falcon"); null quando a nave só tem id
+     */
+    public SpaceCraft(String id, String name, int arrivalTime, int burstTime, int basePriority) {
         if (id == null || id.isBlank()) {
             throw new InvalidValueException("SpaceCraft ID cannot be null or blank.");
         }
@@ -41,6 +55,7 @@ public class SpaceCraft {
         }
 
         this.id = id;
+        this.name = name;
         this.arrivalTime = arrivalTime;
         this.burstTime = burstTime;
         this.remainingTime = burstTime;
@@ -107,6 +122,8 @@ public class SpaceCraft {
 
     // Getters & Setters
     public String getId() { return id; }
+
+    public String getName() { return name; }
 
     public int getArrivalTime() { return arrivalTime; }
 

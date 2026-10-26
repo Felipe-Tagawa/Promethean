@@ -105,8 +105,24 @@ Para a carga de referência oficial ($N_1$ a $N_4$):
 |---|:---:|:---:|:---:|:---:|
 | **Tempo Médio de Espera ($W_m$)** | 8,75 | 7,75 | **6,50** | **6,50** |
 | **Tempo Médio de Turnaround ($TAT_m$)** | 15,25 | 14,25 | **13,00** | **13,00** |
-| **Tempo Médio de Resposta ($RT_m$)** | 8,75 | 7,75 | 4,25 | **2,75** |
+| **Tempo Médio de Resposta ($RT_m$)** | 8,75 | 7,75 | **4,25** | **4,25** |
 | **Trocas de Contexto** | 0 | 0 | 1 | 1 |
+
+### Outras cargas de trabalho
+
+A comparação é sempre feita com a **mesma carga** em todos os algoritmos, e a carga pode variar para mostrar outros resultados. Além da de referência, há uma carga por universo da tela, com naves reais do tema, cada uma pensada para mostrar um fenômeno, e uma carga **aleatória com semente**: a mesma semente gera sempre a mesma carga.
+
+Espera média em ticks (FCFS / SJF / SJF Preemptivo / Prioridade com Aging):
+
+| Carga | Naves | O que mostra | Espera média |
+|---|---|---|---|
+| Bloqueio imperial (Star Wars) | Star Destroyer, Millennium Falcon, X-wings, TIE Fighter | Efeito comboio que só a preempção desfaz | 10,40 / 9,40 / 3,00 / 5,00 |
+| Evacuação Forerunner (Halo) | Forward Unto Dawn, Pelicans, Phaeton, Phantom, Spirit | Starvation no SJF; o aging adianta a nave menos urgente | 5,33 / 4,33 / 4,33 / 4,67 |
+| Tráfego da ISS (Real) | Soyuz MS-22, Crew Dragon, Cygnus, Atlantis, Progress | Chegadas espaçadas: a política quase não muda o resultado | 0,40 / 0,40 / 0,40 / 1,20 |
+| Sinal de LV-426 (Alien) | Derelict, Sulaco, Narcissus, Nostromo, Juggernaut | Preempção em cascata, com várias trocas de contexto | 7,60 / 6,60 / 3,40 / 4,20 |
+| Patrulha da Torre (Destiny) | Naves da Colmeia, Cabal, Eliksni e dos Guardiões | Bursts iguais: o SJF repete o FCFS | 7,50 / 7,50 / 7,50 / 9,33 |
+
+As cargas ficam em `src/main/resources/public/workloads/`, uma por arquivo JSON; para criar uma nova basta um arquivo e uma linha no `index.json`. Os detalhes (formato, regras, rotas e o sorteio) estão na seção 11 de [`docs/frontend/README.md`](docs/frontend/README.md).
 
 ---
 
@@ -116,18 +132,21 @@ Para a carga de referência oficial ($N_1$ a $N_4$):
 src/main/
 ├── java/br/inatel/promethean/
 │   ├── Main.java                        # Ponto de entrada (Servidor + Comparação)
-│   ├── model/                           # Entidades de domínio (SpaceCraft, DockingPort, Workload)
-│   ├── scheduler/                       # Estratégias de escalonamento (FCFS, SJF, Priority)
-│   ├── simulation/                      # Motor de simulação discreta, eventos e métricas
+│   ├── model/                           # Entidades de domínio (SpaceCraft, DockingPort, Workload, WorkloadCatalog)
+│   ├── scheduler/                       # Estratégias de escalonamento (FCFS, SJF, SJF Preemptivo, Priority)
+│   ├── engine/                          # Motor de simulação discreta, eventos, métricas e gravação
 │   ├── sync/                            # Primitivas (Locks, Semaphores, Barriers) e Cenários Concorrentes
 │   ├── server/                          # Servidor Javalin (Rotas REST e canal WebSocket /ws/sync)
-│   └── exceptions/                      # Exceções de domínio
+│   ├── view/                            # Saída no console (linha do tempo, Gantt e métricas)
+│   └── exception/                       # Exceções de domínio
 └── resources/public/                    # Interface Web (HTML5, CSS3, ES Modules, SVG)
     ├── index.html                       # Cena 1: Escalonamento orbital e Gantt interativo
     ├── sincronismo.html                 # Cena 2: Disputa por braços e Grafo de Deadlock ao vivo
     ├── css/                             # Estilos espaciais (Dark theme)
     ├── js/                              # Lógica de renderização, player e WebSocket
+    ├── workloads/                       # Cargas de trabalho (JSON) e o índice delas
     └── exemplos/                        # Gravações JSON pré-computadas de validação
+src/test/java/                           # Testes JUnit 5: cargas, sorteio e métricas esperadas de cada carga
 ```
 
 ---
@@ -148,12 +167,16 @@ cd Promethean
 # Compilar o projeto
 mvn clean compile
 
+# Rodar os testes (reproduzem as métricas de todas as cargas)
+mvn test
+
 # Executar a aplicação
 mvn exec:java -Dexec.mainClass="br.inatel.promethean.Main"
 ```
 
 Assim que a aplicação iniciar:
-* O console exibirá a comparação estatística detalhada dos 4 algoritmos.
+* O console exibirá a comparação estatística detalhada dos 4 algoritmos na carga de referência e uma tabela por carga de trabalho.
+* Na tela de escalonamento, o seletor **Carga** troca a carga simulada; o endereço guarda a escolha (ex.: `http://localhost:7070/?carga=aleatoria&semente=42&naves=5`), então o mesmo link reproduz a mesma simulação.
 * Acesse no navegador:
   * **Escalonamento & Gantt:** `http://localhost:7070`
   * **Sincronismo & Deadlock:** `http://localhost:7070/sincronismo.html`

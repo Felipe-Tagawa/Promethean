@@ -1,0 +1,14 @@
+{
+  "key": "destiny",
+  "title": "Patrulha da Torre",
+  "universe": "destiny",
+  "description": "Todas as naves têm o mesmo burst: o SJF não tem o que escolher e repete o FCFS. A Prioridade atende primeiro os Guardiões.",
+  "spacecrafts": [
+    {"id": "TOMB", "name": "Nave-tumba da Colmeia", "arrivalTime": 0, "burstTime": 4, "basePriority": 4},
+    {"id": "THRESHER", "name": "Debulhador Cabal", "arrivalTime": 1, "burstTime": 4, "basePriority": 3},
+    {"id": "SKIFF", "name": "Esquife Eliksni", "arrivalTime": 2, "burstTime": 4, "basePriority": 2},
+    {"id": "JUMP", "name": "Nave de salto do Guardião", "arrivalTime": 3, "burstTime": 4, "basePriority": 1},
+    {"id": "SKIFF2", "name": "Esquife da Casa da Luz", "arrivalTime": 4, "burstTime": 4, "basePriority": 2},
+    {"id": "JUMP2", "name": "Nave de salto Arcadia", "arrivalTime": 5, "burstTime": 4, "basePriority": 1}
+  ]
+}

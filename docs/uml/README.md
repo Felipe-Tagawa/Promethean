@@ -38,6 +38,7 @@ flowchart TB
         PS["ProcessState<br/>estados"]:::existe
         DP["DockingPort<br/>núcleo de CPU"]:::existe
         WL["Workload<br/>carga de trabalho"]:::fase3
+        WC["WorkloadCatalog<br/>índice das cargas"]:::fase3
     end
 
     subgraph SCHED["scheduler/ — as políticas"]
@@ -127,6 +128,7 @@ classDiagram
 
     class SpaceCraft {
         -String id
+        -String name
         -int arrivalTime
         -int burstTime
         -int remainingTime
@@ -138,6 +140,8 @@ classDiagram
         -int timeInCurrentState
         -ProcessState state
         +SpaceCraft(id, arrivalTime, burstTime, basePriority)
+        +SpaceCraft(id, name, arrivalTime, burstTime, basePriority)
+        +getName() String
         +executeTick() void
         +waitTick() void
         +isFinished() boolean
@@ -227,10 +231,25 @@ classDiagram
     }
 
     class Workload {
+        -String key
+        -String title
+        -String universe
+        -String description
+        -Long seed
         -List~SpaceCraft~ spacecrafts
-        +fromFile(String path) Workload
-        +random(int n, long seed) Workload
+        +Workload(key, title, universe, description, spacecrafts)
+        +reference()$ Workload
+        +fromFile(String key)$ Workload
+        +random(int n, long seed)$ Workload
         +freshCopy() List~SpaceCraft~
+        +getSpacecrafts() List~SpaceCraft~
+        +getSeed() Long
+    }
+
+    class WorkloadCatalog {
+        +keys()$ List~String~
+        +list()$ List~Entry~
+        +create(String key, Long seed, Integer ships)$ Workload
     }
 
     class SimulationEngine {
@@ -280,12 +299,14 @@ classDiagram
 
     class SimulationRecorder {
         +recordSimulation(Scheduler scheduler)$ SimulationRecording
+        +recordSimulation(Scheduler scheduler, Workload workload)$ SimulationRecording
     }
 
     class SimulationRecording {
         <<record>>
         int version
         String algorithm
+        WorkloadInfo workload
         List~String~ ports
         List~SpaceCraft~ spacecrafts
         List~SimulationEvent~ events
@@ -333,6 +354,7 @@ classDiagram
     SimulationRecording --> SimulationMetrics
     SimulationEvent --> EventType
     Workload --> "*" SpaceCraft
+    WorkloadCatalog ..> Workload : cria pela chave
 ```
 
 **Como ler este diagrama**
@@ -343,6 +365,7 @@ classDiagram
   - A lista `all` guarda todas as naves. É por ela que o motor chama `waitTick()` nas naves em READY, sem precisar mexer na fila do escalonador.
 - **Observer:** o motor não imprime nada. Ele emite `SimulationEvent`s e quem quiser escuta. O `ConsoleGanttPrinter` escuta os eventos para imprimir a linha do tempo e o gráfico de Gantt; o `WebSocketServer` também implementa a interface para o canal web.
 - **Gravação para a tela:** o `SimulationRecorder` roda o motor com um listener que guarda cada evento em uma lista e devolve um `SimulationRecording` (naves, portas, eventos e métricas). É o que a rota `GET /api/scheduling` envia ao front, que reproduz a simulação em replay. O `SchedulerCatalog` traduz a chave da URL (`fcfs`, `sjf`, `priority`) em um escalonador novo e é a única fonte da lista de algoritmos.
+- **Cargas:** o `WorkloadCatalog` faz o mesmo papel para as cargas: lê `public/workloads/index.json` e monta a carga pedida pela chave da URL (`workload=starwars`), ou sorteia a aleatória com `Workload.random(n, seed)`. A gravação leva a carga simulada (`workload`, com a semente quando houver), então o mesmo resultado pode ser reproduzido. A regra que mantém a comparação justa continua a mesma: cada algoritmo recebe a sua cópia da **mesma** carga, por `freshCopy()`.
 - O próprio `SimulationEngine` calcula as métricas do README a partir das naves finalizadas:
 
 | Métrica | Fórmula |
@@ -545,7 +568,8 @@ classDiagram
 | `SimulationMetrics` | engine | Resultado | Record com médias de espera, resposta, retorno, vazão e trocas de contexto |
 | `SimulationRecorder`, `SimulationRecording` | engine | Registro para replay | Roda o motor guardando os eventos e devolve a gravação que a tela reproduz |
 | `ConsoleGanttPrinter` | cli | Visualização | Linha do tempo, Diagrama de Gantt textual e métricas formatadas |
-| `Workload` | model | Carga de trabalho | Carga de referência oficial e clonagem com `freshCopy()` |
+| `Workload` | model | Carga de trabalho | Cargas lidas de `public/workloads/*.json` (`fromFile`), carga aleatória com semente (`random`), validação (1 a 8 naves, ids únicos de até 8 caracteres, até 4 níveis de prioridade) e clonagem com `freshCopy()` |
+| `WorkloadCatalog` | model | Escolha da carga | Lê o `index.json`, lista as cargas e monta a carga pedida pela rota, aceitando só chaves do índice |
 | `SharedReadyQueue` | sync | Produtor-Consumidor | Fila protegida por `ReentrantLock` e `Condition notEmpty` |
 | `SubSystemResourceManager`, `ResourceType` | sync | Semáforo contador | Gestão de recursos com `Semaphore` para braço robótico e telemetria |
 | `AirLockBarrier` | sync | Barreira cíclica | Sincronização de threads com `CyclicBarrier` |
